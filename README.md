@@ -45,10 +45,11 @@ clearml-aws/
 ### Quickstart
 
 1. Clone this repo
-```bash
-git clone https://github.com/sfeeser/clearml-aws.git
-cd clearml-aws
-```
+
+    ```bash
+    git clone https://github.com/sfeeser/clearml-aws.git
+    cd clearml-aws
+    ```
 
 2. Configure environment by editting [`spec/config.yaml`](spec/config.yaml) to match your demo or class environment:
 
@@ -116,10 +117,10 @@ cd clearml-aws
 
 11. Ansible will:
   
-  * Creates a namespace (`clearml`)
-  * Renders Helm values from your config
-  * Installs ClearML via Helm
-  * Runs basic readiness checks
+      * Creates a namespace (`clearml`)
+      * Renders Helm values from your config
+      * Installs ClearML via Helm
+      * Runs basic readiness checks
 
 12. Verify deployment
 
