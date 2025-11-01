@@ -1,8 +1,6 @@
 # ClearML on AWS — Demo Edition  
-Author: Stuart Feeser  
-Organization: Alta3 Research (https://alta3.com)
 
-## Overview
+### Overview
 
 This repository provides a complete, reproducible environment for deploying ClearML Enterprise on AWS using two coordinated automation layers:
 
@@ -161,7 +159,7 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
     The destroy step ensures your AWS sandbox returns to zero cost.
     Demo buckets use force_destroy = true for safe cleanup.
 
-## Design Boundaries
+### Design Boundaries
 
 | Responsibility           | Owner     | Tool              |
 | ------------------------ | --------- | ----------------- |
@@ -175,7 +173,7 @@ Ansible configures and tests.
 They are complementary but never overlap.
 
 
-## Troubleshooting
+### Troubleshooting
 
 | Symptom                     | Likely Cause                    | Fix                                         |
 | --------------------------- | ------------------------------- | ------------------------------------------- |
