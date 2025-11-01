@@ -1,4 +1,4 @@
-# ClearML on AWS — Instructor Edition  
+# ClearML on AWS — Demo Edition  
 
 ### Overview
 
