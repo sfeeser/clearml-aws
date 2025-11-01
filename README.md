@@ -44,106 +44,91 @@ clearml-aws/
 
 ### Quickstart
 
-### 1. Clone this repo
+1. Clone this repo
 ```bash
 git clone https://github.com/sfeeser/clearml-aws.git
 cd clearml-aws
 ```
 
-### 2. Configure environment
+2. Configure environment by editting [`spec/config.yaml`](spec/config.yaml) to match your demo or class environment:
 
-Edit [`spec/config.yaml`](spec/config.yaml) to match your demo or class environment:
+    ```yaml
+    aws:
+      region: us-east-1
+      vpc:
+        cidr_block: 10.20.0.0/16
+        az_count: 3
+      dns_tls:
+        enable: false  # or true if using Route53 + ACM
+    ```
 
-```yaml
-aws:
-  region: us-east-1
-  vpc:
-    cidr_block: 10.20.0.0/16
-    az_count: 3
-  dns_tls:
-    enable: false  # or true if using Route53 + ACM
-```
-
-You can keep the defaults for demo use.
+3. Stand up the Infrastructure (Terraform)
 
 
-### ⚙️ Infrastructure (Terraform)
+    ```bash
+    make init
+    ```
 
-### Initialize
+4. Plan and apply
 
-```bash
-make init
-```
+    ```bash
+    make apply
+    ```
 
-#### Plan and apply
+5. Terraform provisions:
 
-```bash
-make apply
-```
+    * VPC, subnets, routing, gateways
+    * EKS cluster and nodegroups
+    * IAM and IRSA roles
+    * S3 buckets for artifacts, datasets, and logs
+    * Optional ACM certificate and Route53 DNS entry
 
-Terraform provisions:
+6. View results
 
-* VPC, subnets, routing, gateways
-* EKS cluster and nodegroups
-* IAM and IRSA roles
-* S3 buckets for artifacts, datasets, and logs
-* Optional ACM certificate and Route53 DNS entry
+    ```bash
+    terraform -chdir=terraform/stacks/aws-clearml output
+    ```
 
-#### View results
+7. Later on (NOT RIGHT NOW!) Destroy when finished
 
-```bash
-terraform -chdir=terraform/stacks/aws-clearml output
-```
+    ```bash
+    make destroy
+    ```
 
-#### Destroy when finished
+    > The `destroy` step ensures your AWS sandbox returns to **zero cost**.
 
-```bash
-make destroy
-```
+    > Demo buckets use `force_destroy = true` for safety.
 
-> 🧹 The `destroy` step ensures your AWS sandbox returns to **zero cost**.
-> Demo buckets use `force_destroy = true` for safety.
+8. Configure ClearML Application (Ansible + Helm) after the Terraform infrastructure is ready:
 
-### ⚙️ Application (Ansible + Helm)
+9. Export kubeconfig
 
-After the Terraform infrastructure is ready:
+    ```bash
+    export KUBECONFIG=$(terraform -chdir=terraform/stacks/aws-clearml output -raw kubeconfig_path)
+    ```
 
-### 1. Export kubeconfig
+10. Deploy ClearML
 
-```bash
-export KUBECONFIG=$(terraform -chdir=terraform/stacks/aws-clearml output -raw kubeconfig_path)
-```
+    ```bash
+    cd ansible
+    ansible-playbook -i inventories/example/hosts.yml playbooks/site.yml
+    ```
 
-### 2. Deploy ClearML
+11. Ansible will:
+  
+  * Creates a namespace (`clearml`)
+  * Renders Helm values from your config
+  * Installs ClearML via Helm
+  * Runs basic readiness checks
 
-```bash
-cd ansible
-ansible-playbook -i inventories/example/hosts.yml playbooks/site.yml
-```
+12. Verify deployment
 
-Ansible:
+    ```bash
+    kubectl get pods -n clearml
+    ```
 
-* Creates a namespace (`clearml`)
-* Renders Helm values from your config
-* Installs ClearML via Helm
-* Runs basic readiness checks
+13. If ingress is enabled, note the public endpoint and access ClearML in your browser.
 
-### 3. Verify deployment
-
-```bash
-kubectl get pods -n clearml
-```
-
-If ingress is enabled, note the public endpoint and access ClearML in your browser.
-
-## Teaching Workflow
-
-1. **Provision:** Run Terraform (`make apply`)
-2. **Configure:** Run Ansible (`ansible-playbook`)
-3. **Explore:** Students interact with ClearML and the cluster
-4. **Teardown:** Run `make destroy`
-
-Each step can be demonstrated live or assigned as lab exercises.
 
 ## Design Boundaries
 
@@ -169,6 +154,4 @@ They are complementary but never overlap.
 
 > *Specifications Are All You Need.*
 > This repo proves it: intent, exemplar, artifact — all in one place.
-
-```
 
