@@ -42,7 +42,7 @@ clearml-aws/
 
 ```
 
-### 🚀 Quickstart
+### Quickstart
 
 ### 1. Clone this repo
 ```bash
