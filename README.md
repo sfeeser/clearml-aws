@@ -1,135 +1,165 @@
 # ClearML on AWS — Demo Edition  
+Author: Stuart Feeser  
+Organization: Alta3 Research (https://alta3.com)
 
-### Overview
+## Overview
 
-This repository contains a complete, reproducible environment for deploying **ClearML Enterprise** on **AWS**.  
-It provides two coordinated layers:
+This repository provides a complete, reproducible environment for deploying ClearML Enterprise on AWS using two coordinated automation layers:
 
 | Layer | Tool | Role |
 |--------|------|------|
-| **Infrastructure** | Terraform | Creates the AWS foundation (VPC, EKS, S3, IAM, ACM). |
-| **Configuration** | Ansible + Helm | Installs ClearML services inside the Kubernetes cluster. |
+| Infrastructure | Terraform | Provisions the AWS foundation (VPC, EKS, S3, IAM, ACM). |
+| Configuration | Ansible + Helm | Installs ClearML services into the Kubernetes cluster. |
 
-These layers are **semantically defined** and self-describing through the [SAAYN Manifesto](saayn/manifesto.md).
+These layers are defined semantically through the SAAYN Manifesto (see saayn/manifesto.md).
 
-### Repository Layout
+### Step-by-Step Instructions
 
-```
+1. Create or designate an AWS sandbox account dedicated to classroom or demo use.
 
-clearml-aws/
-├─ saayn/                    # Semantic source (SpecBooks + Manifesto)
-│  ├─ manifesto.md
-│  ├─ specbook-terraform.md
-│  └─ specbook-ansible.md
-│
-├─ spec/                     # Shared configuration file
-│  └─ config.yaml
-│
-├─ terraform/                # Infrastructure-as-Code (AWS provisioning)
-│  ├─ stacks/aws-clearml/
-│  └─ modules/
-│
-├─ ansible/                  # Application configuration layer
-│  ├─ playbooks/
-│  ├─ roles/clearml/
-│  └─ inventories/example/
-│
-├─ scripts/                  # Utility scripts
-│  └─ empty-bucket.sh
-│
-├─ Makefile                  # Unified command interface
-└─ README.md                 # You are here
+   Why use a sandbox:
+   - Keeps training costs isolated from production billing.
+   - Allows full cleanup by deleting the account after class.
+   - Enables safe experimentation with IAM and Kubernetes roles.
 
-```
+   Quick sandbox setup (recommended):
+   - Sign in as the AWS root account owner.
+   - Create a new member account under AWS Organizations.
+   - Name it something like clearml-demo-sandbox.
+   - Grant administrative access to your instructor IAM user or role.
+   - Set a budget alert (for example, $50) in the AWS Billing Console under Budgets.
 
-### Quickstart
+   At the end of the demo, delete the sandbox account to remove all resources automatically.
 
-1. Clone this repo
+2. Install prerequisites on your workstation (tested on Ubuntu 24.04):
 
-    ```bash
-    git clone https://github.com/sfeeser/clearml-aws.git
-    cd clearml-aws
-    ```
+   | Tool | Minimum Version | Purpose |
+   |------|-----------------|----------|
+   | Terraform | 1.7 or newer | Infrastructure provisioning |
+   | AWS CLI | v2 | Authentication and IAM |
+   | kubectl | Matches EKS minor version | Kubernetes client |
+   | Helm | v3 | Application charts |
+   | Ansible | 2.16 or newer | Configuration and Helm automation |
+   | jq, make | - | Helper utilities |
 
-2. Configure environment by editting [`spec/config.yaml`](spec/config.yaml) to match your demo or class environment:
+   Install Ansible collections:
+   ```bash
+   ansible-galaxy collection install kubernetes.core community.kubernetes
+   ```
 
-    ```yaml
-    aws:
-      region: us-east-1
-      vpc:
-        cidr_block: 10.20.0.0/16
-        az_count: 3
-      dns_tls:
-        enable: false  # or true if using Route53 + ACM
-    ```
+3. Configure AWS credentials:
 
-3. Stand up the Infrastructure (Terraform)
+   ```bash
+   aws configure
+   # or use environment variables:
+   export AWS_PROFILE=<profile_name>
+   export AWS_REGION=us-east-1
+   ```
 
+4. Clone this repository:
 
-    ```bash
-    make init
-    ```
+   ```bash
+   git clone https://github.com/sfeeser/clearml-aws.git
+   cd clearml-aws
+   ```
 
-4. Plan and apply
+5. Edit spec/config.yaml to match your sandbox region and naming:
 
-    ```bash
-    make apply
-    ```
+   ```yaml
+   aws:
+     region: us-east-1
+     vpc:
+       cidr_block: 10.20.0.0/16
+       az_count: 3
+     dns_tls:
+       enable: false  # or true if using Route53 + ACM
+   ```
 
-5. Terraform provisions:
+   Note: S3 bucket names must be globally unique across all AWS users.
 
-    * VPC, subnets, routing, gateways
-    * EKS cluster and nodegroups
-    * IAM and IRSA roles
-    * S3 buckets for artifacts, datasets, and logs
-    * Optional ACM certificate and Route53 DNS entry
+6. Initialize Terraform:
 
-6. View results
+   ```bash
+   make init
+   ```
+
+7. (Optional) Preview the Terraform plan:
+
+   ```bash
+   make plan
+   ```
+
+8. Apply the Terraform configuration:
+
+   ```bash
+   make apply
+   ```
+
+9. Terraform provisions the following resources:
+
+   * VPC, subnets, routing, and gateways
+   * EKS cluster and nodegroups
+   * IAM and IRSA roles
+   * S3 buckets for artifacts, datasets, and logs
+   * Optional ACM certificate and Route53 DNS entry
+
+10. View Terraform outputs:
 
     ```bash
     terraform -chdir=terraform/stacks/aws-clearml output
     ```
 
-7. Later on (NOT RIGHT NOW!) Destroy when finished
-
-    ```bash
-    make destroy
-    ```
-
-    > The `destroy` step ensures your AWS sandbox returns to **zero cost**.
-
-    > Demo buckets use `force_destroy = true` for safety.
-
-8. Configure ClearML Application (Ansible + Helm) after the Terraform infrastructure is ready:
-
-9. Export kubeconfig
+11. Export the kubeconfig path:
 
     ```bash
     export KUBECONFIG=$(terraform -chdir=terraform/stacks/aws-clearml output -raw kubeconfig_path)
+    kubectl get nodes
+    # Verify that the cluster is reachable before continuing
     ```
 
-10. Deploy ClearML
+12. Deploy ClearML into the cluster using Ansible:
 
     ```bash
     cd ansible
     ansible-playbook -i inventories/example/hosts.yml playbooks/site.yml
     ```
 
-11. Ansible will:
-  
-      * Creates a namespace (`clearml`)
-      * Renders Helm values from your config
-      * Installs ClearML via Helm
-      * Runs basic readiness checks
+13. Ansible performs the following:
 
-12. Verify deployment
+    * Creates the namespace "clearml"
+    * Renders Helm values from spec/config.yaml
+    * Installs ClearML via Helm
+    * Runs readiness checks
+
+14. Verify the ClearML deployment:
 
     ```bash
     kubectl get pods -n clearml
+    kubectl get svc -n clearml
     ```
 
-13. If ingress is enabled, note the public endpoint and access ClearML in your browser.
+    If ingress is enabled:
 
+    ```bash
+    kubectl get ingress -n clearml
+    ```
+
+    Visit the listed hostname or load balancer URL in your browser.
+
+15. (Optional) Uninstall ClearML before teardown:
+
+    ```bash
+    kubectl delete ns clearml --ignore-not-found --wait=true
+    ```
+
+16. Destroy all AWS infrastructure:
+
+    ```bash
+    make destroy
+    ```
+
+    The destroy step ensures your AWS sandbox returns to zero cost.
+    Demo buckets use force_destroy = true for safe cleanup.
 
 ## Design Boundaries
 
@@ -140,19 +170,26 @@ clearml-aws/
 | Application lifecycle    | Ansible   | Helm releases     |
 | Cost control / cleanup   | Terraform | Teardown workflow |
 
-Terraform **creates and deletes**.
-Ansible **configures and tests**.
+Terraform creates and deletes.
+Ansible configures and tests.
 They are complementary but never overlap.
 
 
-### 🔗 Resources
+## Troubleshooting
 
-* [ClearML.org](https://clearml.org)
-* [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-* [Ansible Kubernetes Collection](https://docs.ansible.com/ansible/latest/collections/kubernetes/core/)
-* [Alta3 Research](https://alta3.com)
-* [SAAYN Manifesto](saayn/manifesto.md)
+| Symptom                     | Likely Cause                    | Fix                                         |
+| --------------------------- | ------------------------------- | ------------------------------------------- |
+| Error creating S3 bucket    | Bucket name not unique          | Edit names in spec/config.yaml              |
+| kubectl cannot connect      | Missing or incorrect KUBECONFIG | Re-export from Terraform output             |
+| terraform destroy hangs     | ALB or namespace still exists   | Delete the clearml namespace before destroy |
+| Namespace stuck Terminating | Finalizers blocking deletion    | Remove finalizers and retry                 |
+| Unexpected AWS charges      | Cluster left running            | Always use sandbox account; verify teardown |
 
-> *Specifications Are All You Need.*
-> This repo proves it: intent, exemplar, artifact — all in one place.
+## References
+
+* ClearML: [https://clearml.org](https://clearml.org)
+* Terraform AWS Provider: [https://registry.terraform.io/providers/hashicorp/aws/latest/docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+* Ansible Kubernetes Collection: [https://docs.ansible.com/ansible/latest/collections/kubernetes/core/](https://docs.ansible.com/ansible/latest/collections/kubernetes/core/)
+* Alta3 Research: [https://alta3.com](https://alta3.com)
+* SAAYN Manifesto: saayn/manifesto.md
 
