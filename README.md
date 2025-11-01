@@ -183,7 +183,7 @@ They are complementary but never overlap.
 | Namespace stuck Terminating | Finalizers blocking deletion    | Remove finalizers and retry                 |
 | Unexpected AWS charges      | Cluster left running            | Always use sandbox account; verify teardown |
 
-## References
+### References
 
 * ClearML: [https://clearml.org](https://clearml.org)
 * Terraform AWS Provider: [https://registry.terraform.io/providers/hashicorp/aws/latest/docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
