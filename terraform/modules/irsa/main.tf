@@ -1,9 +1,8 @@
-
 # Kubernetes Service Account (created via Terraform K8s provider)
 resource "kubernetes_service_account_v1" "sa" {
   metadata {
-    name      = var.service_account
-    namespace = var.namespace
+    name        = var.service_account
+    namespace   = var.namespace
     annotations = {
       "eks.amazonaws.com/role-arn" = aws_iam_role.irsa.arn
     }
@@ -12,7 +11,7 @@ resource "kubernetes_service_account_v1" "sa" {
 
 # IAM Role and Policy Attachment
 resource "aws_iam_role" "irsa" {
-  name               = "${var.cluster_name}-${var.service_account}-role"
+  name             = "${var.cluster_name}-${var.service_account}-role"
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role.json
 }
 
@@ -21,10 +20,16 @@ data "aws_iam_policy_document" "irsa_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     effect  = "Allow"
-    principal {
-      federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(var.oidc_issuer, "https://", "")}"
-      type      = "Federated"
+    
+    # --- CORRECTED PRINCIPALS BLOCK ---
+    principals {
+      type        = "Federated" 
+      identifiers = [
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(var.oidc_issuer, "https://", "")}"
+      ]
     }
+    # ----------------------------------
+    
     condition {
       test     = "StringEquals"
       variable = "${replace(var.oidc_issuer, "https://", "")}:sub"
@@ -37,8 +42,7 @@ data "aws_caller_identity" "current" {}
 
 # IAM Policy Attachment
 resource "aws_iam_role_policy" "sa_policy" {
-  name   = "${var.service_account}-policy"
-  role   = aws_iam_role.irsa.id
+  name  = "${var.service_account}-policy"
+  role  = aws_iam_role.irsa.id
   policy = var.policy_document
 }
-
