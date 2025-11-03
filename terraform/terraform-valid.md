@@ -128,7 +128,9 @@ This guide provides the steps to install necessary tools and perform local synta
     **Expected Output:**
 
     ```
-    Empty output (or a list of files if formatting is needed). The `-check` flag ensures no changes are applied.
+    ###Empty output (or a list of files if formatting is needed). The `-check` flag ensures no changes are applied.
+
+    main.tf
     ```
     
 0. Validate Configuration
