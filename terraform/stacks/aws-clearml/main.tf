@@ -60,10 +60,11 @@ module "nodegroups" {
 module "irsa_s3" {
   source = "../../modules/irsa"
 
-  cluster_name    = module.eks_cluster.cluster_name
-  namespace       = local.config.ansible.namespace
-  service_account = "clearml-sa"
-  policy_document = data.aws_iam_policy_document.s3_access.json
+  cluster_name          = module.eks_cluster.cluster_name
+  oidc_issuer           = module.eks_cluster.oidc_issuer # <--- NEW INPUT
+  namespace             = local.config.ansible.namespace
+  service_account       = "clearml-sa"
+  policy_document       = data.aws_iam_policy_document.s3_access.json
 }
 
 # Data document to grant S3 access to the IRSA role
