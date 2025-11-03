@@ -62,7 +62,7 @@ module "irsa_s3" {
   source = "../../modules/irsa"
 
   cluster_name          = module.eks_cluster.cluster_name
-  oidc_issuer           = module.eks_cluster.oidc_issuer # <--- NEW INPUT
+  oidc_issuer           = module.eks_cluster.oidc_issuer
   namespace             = local.config.ansible.namespace
   service_account       = "clearml-sa"
   policy_document       = data.aws_iam_policy_document.s3_access.json
@@ -320,7 +320,7 @@ output "oidc_issuer" {
 
 --- FILE: terraform/modules/s3/main.tf ---
 
-# Define data source for AWS Caller Identity (Fixes Error 3)
+# Define data source for AWS Caller Identity
 data "aws_caller_identity" "current" {}
 
 # Dynamically creates a set of S3 buckets based on the list of bucket_names
@@ -376,7 +376,7 @@ resource "aws_iam_role" "irsa" {
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role.json
 }
 
-# Policy Document for EKS Service Account to assume role (Fixes Error 1)
+# Policy Document for EKS Service Account to assume role
 data "aws_iam_policy_document" "irsa_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -405,7 +405,7 @@ resource "aws_iam_role_policy" "sa_policy" {
 --- FILE: terraform/modules/irsa/variables.tf ---
 
 variable "cluster_name" { type = string }
-variable "oidc_issuer" { type = string } # <--- NEW INPUT
+variable "oidc_issuer" { type = string }
 variable "namespace" { type = string }
 variable "service_account" { type = string }
 variable "policy_document" { type = string } # JSON IAM policy from root module
@@ -420,7 +420,7 @@ output "service_account_arn" {
 
 --- FILE: terraform/modules/nodegroups/main.tf ---
 
-# IAM Role for EKS Worker Nodes (Fixes Error 2)
+# IAM Role for EKS Worker Nodes
 resource "aws_iam_role" "node_group_role" {
   name = "${var.cluster_name}-nodegroup-role"
   assume_role_policy = jsonencode({
@@ -456,7 +456,7 @@ resource "aws_eks_node_group" "workers" {
   subnet_ids      = var.subnet_ids
   instance_types  = each.value.instance_types
   disk_size       = each.value.disk_size
-  node_role_arn   = aws_iam_role.node_group_role.arn # <--- SUPPLIES REQUIRED ARGUMENT
+  node_role_arn   = aws_iam_role.node_group_role.arn
 
   scaling_config {
     desired_size = each.value.desired_size
@@ -525,12 +525,3 @@ variable "region" { type = string }
 output "certificate_arn" {
   value = aws_acm_certificate_validation.cert_validation.certificate_arn
 }
-
-
-**Action Steps to Validate the Fixes:**
-
-1.  **Re-run the parser:** Use your `parser.sh` script to overwrite the existing files with this corrected content.
-2.  **Navigate:** `cd terraform/stacks/aws-clearml`
-3.  **Validate:** `terraform validate`
-
-This should now return: `Success! The configuration is valid.` Let me know the result!
