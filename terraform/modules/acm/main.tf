@@ -1,3 +1,10 @@
+
+# Provisions an ACM certificate for the specified domain
+resource "aws_acm_certificate" "cert" {
+  domain_name       = "${var.hostname}.${var.domain_name}"
+  validation_method = "DNS"
+}
+
 # DNS Validation Record in Route53
 resource "aws_route53_record" "validation" {
   for_each = {

@@ -1,3 +1,10 @@
+
+# EKS Cluster Outputs
+output "vpc_id" {
+  description = "The VPC identifier"
+  value       = module.vpc.vpc_id
+}
+
 output "private_subnets" {
   description = "IDs of private subnets"
   value       = module.vpc.private_subnets

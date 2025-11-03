@@ -1,3 +1,15 @@
+
+# Kubernetes Service Account (created via Terraform K8s provider)
+resource "kubernetes_service_account_v1" "sa" {
+  metadata {
+    name      = var.service_account
+    namespace = var.namespace
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.irsa.arn
+    }
+  }
+}
+
 # IAM Role and Policy Attachment
 resource "aws_iam_role" "irsa" {
   name               = "${var.cluster_name}-${var.service_account}-role"

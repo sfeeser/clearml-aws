@@ -1,3 +1,4 @@
+
 # Modular VPC with public/private subnets and NAT Gateway
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -11,3 +12,4 @@ resource "aws_vpc" "main" {
 }
 
 # ... (Additional resources for subnets, internet gateway, NAT gateway, routing tables) ...
+

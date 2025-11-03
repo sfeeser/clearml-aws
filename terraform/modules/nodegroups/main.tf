@@ -1,3 +1,8 @@
+
+# Dynamically creates EKS Managed Node Groups
+resource "aws_eks_node_group" "workers" {
+  for_each = var.nodegroup_definitions
+
   cluster_name    = var.cluster_name
   node_group_name = each.key
   subnet_ids      = var.subnet_ids

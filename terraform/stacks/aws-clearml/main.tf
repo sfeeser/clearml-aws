@@ -1,3 +1,9 @@
+
+locals {
+  # Read and parse the shared configuration file
+  config = yamldecode(file(var.config_path))
+}
+
 # -----------------------------------------------------------------------------
 # 1. VPC Module Invocation
 # -----------------------------------------------------------------------------

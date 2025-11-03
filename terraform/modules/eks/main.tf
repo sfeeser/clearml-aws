@@ -1,3 +1,16 @@
+
+# EKS Cluster resource
+resource "aws_eks_cluster" "main" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.cluster.arn
+  vpc_config {
+    subnet_ids = var.private_subnets
+    endpoint_private_access = true
+    endpoint_public_access  = false
+  }
+  # ... (additional settings, logging) ...
+}
+
 # IAM Role for EKS Cluster
 resource "aws_iam_role" "cluster" {
   name = "${var.cluster_name}-role"
