@@ -61,10 +61,11 @@ module "nodegroups" {
 module "irsa_s3" {
   source = "../../modules/irsa"
 
-  cluster_name    = module.eks_cluster.cluster_name
-  namespace       = local.config.ansible.namespace
-  service_account = "clearml-sa"
-  policy_document = data.aws_iam_policy_document.s3_access.json
+  cluster_name          = module.eks_cluster.cluster_name
+  oidc_issuer           = module.eks_cluster.oidc_issuer # <--- NEW INPUT
+  namespace             = local.config.ansible.namespace
+  service_account       = "clearml-sa"
+  policy_document       = data.aws_iam_policy_document.s3_access.json
 }
 
 # Data document to grant S3 access to the IRSA role
@@ -311,14 +312,22 @@ output "cluster_certificate_authority_data" {
 output "kubeconfig_path" {
   value = "${var.cluster_name}.kubeconfig" # Matches null_resource command
 }
+# Output the OIDC issuer URL for the IRSA module
+output "oidc_issuer" {
+  value = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
 
 
 --- FILE: terraform/modules/s3/main.tf ---
+
+# Define data source for AWS Caller Identity (Fixes Error 3)
+data "aws_caller_identity" "current" {}
 
 # Dynamically creates a set of S3 buckets based on the list of bucket_names
 resource "aws_s3_bucket" "app_storage" {
   for_each = toset(var.bucket_names)
 
+  # Use the data source for account ID
   bucket = "${var.project_name}-${var.environment}-${each.key}-${data.aws_caller_identity.current.account_id}"
   
   # Crucial for determinism/teardown: SpecBook 4.0 requirement
@@ -367,22 +376,24 @@ resource "aws_iam_role" "irsa" {
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role.json
 }
 
-# Policy Document for EKS Service Account to assume role
+# Policy Document for EKS Service Account to assume role (Fixes Error 1)
 data "aws_iam_policy_document" "irsa_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     effect  = "Allow"
     principal {
-      federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}"
+      federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(var.oidc_issuer, "https://", "")}"
       type      = "Federated"
     }
     condition {
       test     = "StringEquals"
-      variable = "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub"
+      variable = "${replace(var.oidc_issuer, "https://", "")}:sub"
       values   = ["system:serviceaccount:${var.namespace}:${var.service_account}"]
     }
   }
 }
+# Define data source for AWS Caller Identity for use in policy (required for OIDC ARN)
+data "aws_caller_identity" "current" {}
 
 # IAM Policy Attachment
 resource "aws_iam_role_policy" "sa_policy" {
@@ -394,6 +405,7 @@ resource "aws_iam_role_policy" "sa_policy" {
 --- FILE: terraform/modules/irsa/variables.tf ---
 
 variable "cluster_name" { type = string }
+variable "oidc_issuer" { type = string } # <--- NEW INPUT
 variable "namespace" { type = string }
 variable "service_account" { type = string }
 variable "policy_document" { type = string } # JSON IAM policy from root module
@@ -408,6 +420,33 @@ output "service_account_arn" {
 
 --- FILE: terraform/modules/nodegroups/main.tf ---
 
+# IAM Role for EKS Worker Nodes (Fixes Error 2)
+resource "aws_iam_role" "node_group_role" {
+  name = "${var.cluster_name}-nodegroup-role"
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+    Version = "2012-10-17"
+  })
+}
+
+# Attach required policies to the node group role
+resource "aws_iam_role_policy_attachment" "worker_node_policy" {
+  for_each = toset([
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+  ])
+  policy_arn = each.value
+  role       = aws_iam_role.node_group_role.name
+}
+
+
 # Dynamically creates EKS Managed Node Groups
 resource "aws_eks_node_group" "workers" {
   for_each = var.nodegroup_definitions
@@ -417,6 +456,7 @@ resource "aws_eks_node_group" "workers" {
   subnet_ids      = var.subnet_ids
   instance_types  = each.value.instance_types
   disk_size       = each.value.disk_size
+  node_role_arn   = aws_iam_role.node_group_role.arn # <--- SUPPLIES REQUIRED ARGUMENT
 
   scaling_config {
     desired_size = each.value.desired_size
@@ -485,3 +525,12 @@ variable "region" { type = string }
 output "certificate_arn" {
   value = aws_acm_certificate_validation.cert_validation.certificate_arn
 }
+
+
+**Action Steps to Validate the Fixes:**
+
+1.  **Re-run the parser:** Use your `parser.sh` script to overwrite the existing files with this corrected content.
+2.  **Navigate:** `cd terraform/stacks/aws-clearml`
+3.  **Validate:** `terraform validate`
+
+This should now return: `Success! The configuration is valid.` Let me know the result!
