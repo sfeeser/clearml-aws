@@ -1,0 +1,225 @@
+--- FILE: ansible/playbooks/site.yml ---
+---
+- name: ClearML install (cluster configuration)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - ../../spec/config.yaml
+    # Optional: Load file containing Terraform outputs if not using environment variables
+    # - tf-outputs.yaml
+
+  vars:
+    namespace: "{{ ansible.namespace | default('clearml') }}"
+    # Fallback logic to get kubeconfig path: Env KUBECONFIG > Env KUBECONFIG_PATH > default home path
+    kubeconfig_path: "{{ lookup('env','KUBECONFIG') | default(lookup('env','KUBECONFIG_PATH'), true) | default('~/.kube/config', true) }}"
+
+    # Path to dump Terraform outputs as JSON (for file-driven input)
+    tf_outputs_json_path: "{{ lookup('env','TF_OUT_JSON') | default(omit) }}"
+    
+    # Path where we will render the final Helm values file
+    rendered_values_path: "/tmp/clearml_helm_values_{{ namespace }}.yaml"
+
+  tasks:
+    - name: Show target configuration
+      ansible.builtin.debug:
+        msg: "Target Namespace: {{ namespace }}, Kubeconfig: {{ kubeconfig_path }}"
+
+    - name: Fail if KUBECONFIG is missing (mandatory contract for cluster access)
+      ansible.builtin.fail:
+        msg: "The 'KUBECONFIG' environment variable must be set to the path of the generated EKS kubeconfig file."
+      when: lookup('env','KUBECONFIG') is not defined
+
+    - name: Include ClearML role
+      ansible.builtin.include_role:
+        name: clearml
+
+# -----------------------------------------------------------------------------
+# Optional Playbook for Uninstall Path
+# -----------------------------------------------------------------------------
+- name: ClearML uninstall (cleanup)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  when: uninstall | default(false) | bool
+
+  vars_files:
+    - ../../spec/config.yaml
+
+  vars:
+    namespace: "{{ ansible.namespace | default('clearml') }}"
+
+  tasks:
+    - name: Run ClearML role uninstall task
+      ansible.builtin.include_role:
+        name: clearml
+        tasks_from: uninstall.yml
+
+
+--- FILE: ansible/roles/clearml/tasks/main.yml ---
+# -----------------------------------------------------------------------------
+# Main Role Tasks: Deploy ClearML Enterprise components
+# -----------------------------------------------------------------------------
+- name: 1. Ensure target namespace exists (Idempotent)
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ namespace }}"
+    state: present
+    kubeconfig: "{{ kubeconfig_path }}"
+  tags: [deploy, k8s, namespace]
+
+- name: 2. Set Fact for Terraform Outputs (if environment variable TF_OUT_JSON is used)
+  ansible.builtin.set_fact:
+    tf_outputs: "{{ lookup('file', tf_outputs_json_path) | from_json }}"
+  when: tf_outputs_json_path is defined
+  tags: [deploy, vars]
+
+# Note: For demo/simplicity, we will assume S3 bucket names are passed as ENV variables
+# in the actual execution environment as a fallback, or retrieved from 'tf_outputs' fact.
+# For local validation, the 'tf_outputs' fact will be undefined unless TF_OUT_JSON is set.
+
+- name: 3. Render Helm values file
+  ansible.builtin.template:
+    src: values.yaml.j2
+    dest: "{{ rendered_values_path }}"
+    mode: '0600'
+  tags: [deploy, helm, template]
+
+- name: 4. Install or Upgrade ClearML Helm Release
+  community.kubernetes.helm:
+    name: clearml
+    chart_ref: https://allegroai.github.io/clearml-helm-charts
+    release_namespace: "{{ namespace }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    values_files:
+      - "{{ rendered_values_path }}"
+    create_namespace: false
+    state: present
+  register: helm_install_status
+  tags: [deploy, helm]
+
+- name: 5. Wait for ClearML API and Web components to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ item }}"
+    namespace: "{{ namespace }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300 # Wait up to 5 minutes
+  loop:
+    - clearml-apiserver
+    - clearml-web
+  tags: [deploy, readiness]
+
+- name: 6. Smoke Test (HTTP readiness check on ClusterIP)
+  ansible.builtin.uri:
+    url: "http://clearml-apiserver.{{ namespace }}.svc.cluster.local:8080/api/v1/status"
+    method: GET
+    status_code: 200
+    return_content: true
+  register: api_status
+  delegate_to: localhost
+  run_once: true
+  tags: [test, smoke]
+
+- name: Smoke Test Result
+  ansible.builtin.debug:
+    msg: "ClearML API status check successful: {{ api_status.content }}"
+  tags: [test, smoke]
+
+
+--- FILE: ansible/roles/clearml/tasks/uninstall.yml ---
+# -----------------------------------------------------------------------------
+# Role Tasks: Uninstall Path (Called by the uninstall play)
+# -----------------------------------------------------------------------------
+- name: Uninstall Helm Release
+  community.kubernetes.helm:
+    name: clearml
+    release_namespace: "{{ namespace }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: absent
+  ignore_errors: true # Continue even if release is already gone
+  tags: [uninstall]
+
+- name: Delete Namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ namespace }}"
+    state: absent
+    kubeconfig: "{{ kubeconfig_path }}"
+    wait: true
+    wait_timeout: 120
+  tags: [uninstall]
+
+
+--- FILE: ansible/roles/clearml/templates/values.yaml.j2 ---
+# -----------------------------------------------------------------------------
+# ClearML Helm Chart Values Template
+# Values are injected from spec/config.yaml and environment/Terraform outputs.
+# -----------------------------------------------------------------------------
+
+# Storage Configuration (critical for ClearML artifacts/datasets)
+storage:
+  s3:
+    # Use environment variables as the primary source for the required S3 bucket names.
+    # These environment variables would be set by the calling pipeline (e.g., from Terraform outputs).
+    # Fallback to the tf_outputs fact if available.
+    artifactsBucket: "{{ lookup('env', 'S3_ARTIFACTS') | default(tf_outputs.s3_artifacts | default('clearml-artifacts-default')) }}"
+    datasetsBucket:  "{{ lookup('env', 'S3_DATASETS') | default(tf_outputs.s3_datasets | default('clearml-datasets-default')) }}"
+    logsBucket:      "{{ lookup('env', 'S3_LOGS') | default(tf_outputs.s3_logs | default('clearml-logs-default')) }}"
+    
+    # Credentials are typically handled by IRSA, so explicit keys are usually not needed
+    # accessKey: ""
+    # secretKey: ""
+
+# Ingress Configuration (Optional based on aws.dns_tls.enable in spec/config.yaml)
+ingress:
+  enabled: {{ aws.dns_tls.enable | default(false) | tojson }}
+  className: alb
+  hosts:
+    - "{{ aws.dns_tls.hostname | default('clearml-api') }}.{{ aws.dns_tls.domain_name | default('example.com') }}"
+  
+  tls:
+    # NOTE: The Terraform layer provisions the certificate and the load balancer.
+    # Helm needs to know which secret to use for the TLS termination.
+    - secretName: clearml-tls-secret
+      hosts:
+        - "{{ aws.dns_tls.hostname | default('clearml-api') }}.{{ aws.dns_tls.domain_name | default('example.com') }}"
+
+# Service Type: Ensure we expose the services correctly
+apiserver:
+  service:
+    type: ClusterIP # Default for EKS, can be NodePort or LoadBalancer if needed
+
+web:
+  service:
+    type: ClusterIP
+
+# ... (other chart values would follow) ...
+
+
+--- FILE: ansible/roles/clearml/vars/main.yml ---
+---
+# Define chart reference for easier maintenance
+clearml_chart_repo: https://allegroai.github.io/clearml-helm-charts
+clearml_chart_name: clearml
+
+# Default namespace defined in spec/config.yaml but defined here as a fallback
+clearml_namespace: clearml
+
+
+--- FILE: ansible/inventories/example/hosts.yml ---
+# -----------------------------------------------------------------------------
+# Minimal Ansible Inventory for Local Execution
+# -----------------------------------------------------------------------------
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
