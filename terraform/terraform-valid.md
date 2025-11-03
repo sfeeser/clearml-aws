@@ -78,7 +78,7 @@ This guide provides the steps to install necessary tools and perform local synta
 
     **Expected Output:**
 
-    ```
+    ```bash
     Initializing the backend...
 
     Successfully configured the backend "local"! Terraform will automatically
