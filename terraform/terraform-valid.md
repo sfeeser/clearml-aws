@@ -20,8 +20,6 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com jammy main" | sudo tee /etc/apt/sources.list.d/hashicorp.list`
 
-    > Note: We use jammy as the stable distribution name for this repository, which is compatible with Ubuntu 24.04.
-
 0. Update and install Terraform:
 
     `student@bchd:~$` `sudo apt update`
