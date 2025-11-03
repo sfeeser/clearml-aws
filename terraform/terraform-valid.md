@@ -30,7 +30,7 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `terraform --version`
 
-0. Your Terraform code requires the configuration file (spec/config.yaml) to exist, as the root main.tf attempts to load it. Create the Mock Configuration File. Create the spec/ directory and populate it with a minimal config.yaml that includes the required structure in your repository root.
+0. Edit spec/config.yaml, found in the root directory of this repo as main.tf attempts to load it from there.
 
     ```
     # Minimal Mock Configuration for Local Validation
