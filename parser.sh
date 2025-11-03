@@ -1,73 +1,44 @@
 #!/bin/bash
-#
-# SAAYN Artifact Parser: Reconstructs the directory structure and files
-# from a single composite output block using the '--- FILE: <path> ---' delimiter.
-#
-# Usage:
-#   1. Save the synthesized IaC output to a file (e.g., 'terraform-artifact.txt').
-#   2. Run the script: cat terraform-artifact.txt | ./parse_artifact.sh
-#
 
-# Ensure the script stops on the first error
-set -e
+# save_terraform_files.sh
+# Usage: cat input.txt | ./save_terraform_files.sh
+#    or: ./save_terraform_files.sh < input.txt
 
-# Define the delimiter used in the composite file
-DELIMITER="--- FILE: "
-DELIMITER_ESCAPED="--- FILE: "
+set -euo pipefail
 
-# Temporary file to store the content between delimiters
-TEMP_FILE=$(mktemp)
-CURRENT_FILE_PATH=""
-FIRST_FILE_SEEN=false
+current_file=""
 
-echo "Starting SAAYN Artifact Parser..."
+while IFS= read -r line || [[ -n "$line" ]]; do
+  # Detect start of a new file block
+  if [[ "$line" =~ ^---[[:space:]]FILE:[[:space:]](.+)[[:space:]]---$ ]]; then
+    filepath="${BASH_REMATCH[1]}"
 
-# Function to process the content found for the previous file
-process_content() {
-    if [ "$CURRENT_FILE_PATH" != "" ]; then
-        # 1. Create the directory if it doesn't exist
-        DIR_NAME=$(dirname "$CURRENT_FILE_PATH")
-        if [ ! -d "$DIR_NAME" ]; then
-            mkdir -p "$DIR_NAME"
-            echo "Created directory: $DIR_NAME"
-        fi
-
-        # 2. Extract content from the temp file (removing leading/trailing blank lines from stream)
-        # Note: 'tail -n +2' is used to skip the initial blank line often present after a delimiter
-        # 'cat "$TEMP_FILE" | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//' | sed '/^$/d' > "$CURRENT_FILE_PATH"'
-        
-        # We will use simple cat to preserve content exactly as generated, including
-        # necessary blank lines in code files, but strip the leading blank line.
-        
-        sed '1,/^$/d' "$TEMP_FILE" > "$CURRENT_FILE_PATH"
-
-        echo "Wrote content to: $CURRENT_FILE_PATH ($(wc -l < "$CURRENT_FILE_PATH" | tr -d ' ') lines)"
-
-        # 3. Clear the temp file for the next file's content
-        > "$TEMP_FILE"
+    # Close previous file if open
+    if [[ -n "$current_file" ]]; then
+      echo "Saved: $current_file"
     fi
-}
 
-# Read the input line by line from standard input
-while IFS= read -r LINE || [ -n "$LINE" ]; do
-    # Check if the line starts with the file delimiter
-    if [[ "$LINE" == *"$DELIMITER"* ]]; then
-        # Process the content of the PREVIOUS file (if one was active)
-        process_content
+    # Create directory structure
+    mkdir -p "$(dirname "$filepath")"
 
-        # Extract the new file path (everything after the delimiter and leading/trailing spaces)
-        CURRENT_FILE_PATH=$(echo "$LINE" | sed "s/^.*$DELIMITER_ESCAPED//g" | xargs)
-        FIRST_FILE_SEEN=true
-    elif [ "$FIRST_FILE_SEEN" = true ]; then
-        # If a file delimiter has been seen, pipe all subsequent lines to the temp file
-        echo "$LINE" >> "$TEMP_FILE"
-    fi
+    # Start writing to new file (truncate if exists)
+    > "$filepath"
+    current_file="$filepath"
+
+    echo "Starting: $filepath"
+    continue
+  fi
+
+  # If we're inside a file block, append the line
+  if [[ -n "$current_file" ]]; then
+    printf '%s\n' "$line" >> "$current_file"
+  fi
+
 done
 
-# Process the content of the LAST file encountered
-process_content
+# Final save message
+if [[ -n "$current_file" ]]; then
+  echo "Saved: $current_file"
+fi
 
-# Cleanup the temporary file
-rm "$TEMP_FILE"
-
-echo "Artifact parsing complete."
+echo "All files processed."
