@@ -29,3 +29,40 @@ This guide provides the steps to install necessary tools and perform local synta
 0. Verify installation:
 
     `student@bchd:~$` `terraform --version`
+
+0. Your Terraform code requires the configuration file (spec/config.yaml) to exist, as the root main.tf attempts to load it. Create the Mock Configuration File. Create the spec/ directory and populate it with a minimal config.yaml that includes the required structure in your repository root.
+
+    ```
+    # Minimal Mock Configuration for Local Validation
+    
+    project:
+      name: clearml-saayn
+      env: test
+    
+    aws:
+      region: us-east-1
+      vpc_cidr: 10.0.0.0/16
+      eks_version: "1.28"
+      dns_tls:
+        enable: false # Must be false to skip ACM module creation
+      
+    s3:
+      bucket_types:
+        - artifacts
+        - datasets
+        - logs
+      
+    kms:
+      alias: aws/ebs # Placeholder
+    
+    ansible:
+      namespace: clearml # Required for IRSA module
+    
+    nodegroups:
+      general-purpose:
+        instance_types: ["t3.medium"]
+        disk_size: 20
+        desired_size: 1
+        max_size: 2
+        min_size: 1
+    ```
