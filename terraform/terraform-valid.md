@@ -68,12 +68,18 @@ This guide provides the steps to install necessary tools and perform local synta
     ```
 
 0. Now you can test the code in the terraform/ directory structure created by your parser.sh script.
-1.  Initialize the Terraform Backend and Providers. Navigate to the stack root and initialize Terraform. This downloads the providers (aws, kubernetes, helm) and validates the structure.
+
+0.  Initialize the Terraform Backend and Providers. Navigate to the stack root and initialize Terraform. This downloads the providers (aws, kubernetes, helm) and validates the structure.
 
     ```
     cd terraform/stacks/aws-clearml
     terraform init
-    **Expected Output:** Success message showing provider plugins have been successfully initialized.
+    ```
+
+    **Expected Output:**
+
+    ```
+    Success message showing provider plugins have been successfully initialized.
     ```
 
 0. Format and Syntax Check. Ensure the generated code is correctly formatted and passes the Terraform syntax check.
@@ -81,6 +87,8 @@ This guide provides the steps to install necessary tools and perform local synta
     ```bash
     terraform fmt -recursive -check
     ```
+
+    **Expected Output:**
 
     ```
     Empty output (or a list of files if formatting is needed). The `-check` flag ensures no changes are applied.
@@ -92,23 +100,28 @@ This guide provides the steps to install necessary tools and perform local synta
     terraform validate
     ```
 
-   ```
-   `Success! The configuration is valid`
-   ```
-    
+    **Expected Output:**
+
+    ```
+    Success! The configuration is valid
+    ```
+
 
 0.  ***Prerequisite:*** You must have configured your AWS credentials (e.g., via `aws configure` or environment variables) for the `terraform plan` to execute correctly, as it resolves data sources and performs API calls to look up roles/identities.
 
 0. Perform a Dry Run. A `plan` is a dry run that attempts to resolve all data sources and variables, showing what actions *would* be taken against your configured AWS environment.
 
-   ```bash
-   terraform plan
-   ```
+    ```bash
+    terraform plan
+    ```
 
-   ```
-   A detailed output listing the tens of resources (VPC, EKS, S3, IAM, etc.) that Terraform *intends*
-   to create, followed by: `Plan: XX to add, 0 to change, 0 to destroy.`
-   ```
+
+    **Expected Output:**
+
+    ```
+    A detailed output listing the tens of resources (VPC, EKS, S3, IAM, etc.) that Terraform *intends*
+    to create, followed by: `Plan: XX to add, 0 to change, 0 to destroy.`
+    ```
 
 0. If all these steps pass, your synthesized IaC artifact is verified as compliant and ready for deployment.
 
