@@ -33,6 +33,7 @@ The compiler must emit this structure under the repository root:
 
 ```
 
+```
 terraform/
 ├─ stacks/aws-clearml/
 │  ├─ main.tf
