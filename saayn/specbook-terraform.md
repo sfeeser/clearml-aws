@@ -64,7 +64,7 @@ terraform/
 ├─ variables.tf
 └─ outputs.tf
 
-````
+```
 
 ### 2.2 Required Inputs
 
