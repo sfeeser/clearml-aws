@@ -79,7 +79,44 @@ This guide provides the steps to install necessary tools and perform local synta
     **Expected Output:**
 
     ```
-    Success message showing provider plugins have been successfully initialized.
+    Initializing the backend...
+
+    Successfully configured the backend "local"! Terraform will automatically
+    use this backend unless the backend configuration changes.
+    Initializing modules...
+    - acm_cert in ../../modules/acm
+    - eks_cluster in ../../modules/eks
+    - irsa_s3 in ../../modules/irsa
+    - nodegroups in ../../modules/nodegroups
+    - s3_storage in ../../modules/s3
+    - vpc in ../../modules/vpc
+    Initializing provider plugins...
+    - Finding hashicorp/kubernetes versions matching "~> 2.20"...
+    - Finding hashicorp/helm versions matching "~> 2.11"...
+    - Finding hashicorp/aws versions matching "~> 5.0"...
+    - Finding latest version of hashicorp/null...
+    - Installing hashicorp/kubernetes v2.38.0...
+    - Installed hashicorp/kubernetes v2.38.0 (signed by HashiCorp)
+    - Installing hashicorp/helm v2.17.0...
+    - Installed hashicorp/helm v2.17.0 (signed by HashiCorp)
+    - Installing hashicorp/aws v5.100.0...
+    - Installed hashicorp/aws v5.100.0 (signed by HashiCorp)
+    - Installing hashicorp/null v3.2.4...
+    - Installed hashicorp/null v3.2.4 (signed by HashiCorp)
+    Terraform has created a lock file .terraform.lock.hcl to record the provider
+    selections it made above. Include this file in your version control repository
+    so that Terraform can guarantee to make the same selections by default when
+    you run "terraform init" in the future.
+    
+    Terraform has been successfully initialized!
+    
+    You may now begin working with Terraform. Try running "terraform plan" to see
+    any changes that are required for your infrastructure. All Terraform commands
+    should now work.
+    
+    If you ever set or change modules or backend configuration for Terraform,
+    rerun this command to reinitialize your working directory. If you forget, other
+    commands will detect it and remind you to do so if necessary.
     ```
 
 0. Format and Syntax Check. Ensure the generated code is correctly formatted and passes the Terraform syntax check.
