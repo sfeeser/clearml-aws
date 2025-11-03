@@ -1,5 +1,5 @@
 
-# Define data source for AWS Caller Identity (Fixes Error 3)
+# Define data source for AWS Caller Identity
 data "aws_caller_identity" "current" {}
 
 # Dynamically creates a set of S3 buckets based on the list of bucket_names

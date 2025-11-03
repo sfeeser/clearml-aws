@@ -1,5 +1,5 @@
 
-# IAM Role for EKS Worker Nodes (Fixes Error 2)
+# IAM Role for EKS Worker Nodes
 resource "aws_iam_role" "node_group_role" {
   name = "${var.cluster_name}-nodegroup-role"
   assume_role_policy = jsonencode({
@@ -35,7 +35,7 @@ resource "aws_eks_node_group" "workers" {
   subnet_ids      = var.subnet_ids
   instance_types  = each.value.instance_types
   disk_size       = each.value.disk_size
-  node_role_arn   = aws_iam_role.node_group_role.arn # <--- SUPPLIES REQUIRED ARGUMENT
+  node_role_arn   = aws_iam_role.node_group_role.arn
 
   scaling_config {
     desired_size = each.value.desired_size

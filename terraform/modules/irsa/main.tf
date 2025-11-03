@@ -16,7 +16,7 @@ resource "aws_iam_role" "irsa" {
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role.json
 }
 
-# Policy Document for EKS Service Account to assume role (Fixes Error 1)
+# Policy Document for EKS Service Account to assume role
 data "aws_iam_policy_document" "irsa_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]

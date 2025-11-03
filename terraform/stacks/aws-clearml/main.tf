@@ -61,7 +61,7 @@ module "irsa_s3" {
   source = "../../modules/irsa"
 
   cluster_name          = module.eks_cluster.cluster_name
-  oidc_issuer           = module.eks_cluster.oidc_issuer # <--- NEW INPUT
+  oidc_issuer           = module.eks_cluster.oidc_issuer
   namespace             = local.config.ansible.namespace
   service_account       = "clearml-sa"
   policy_document       = data.aws_iam_policy_document.s3_access.json
