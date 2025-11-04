@@ -1,3 +1,6 @@
+https://alta3.slack.com/files/U91A32V2T/F09RJ3Q4YSU/image.png
+
+
 ```
                                            ┌──────────────────────────────────┐                                        
                                            │ AWS EIP (Fixed IP)               │                                        
