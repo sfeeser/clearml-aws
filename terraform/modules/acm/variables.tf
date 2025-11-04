@@ -1,13 +1,23 @@
- ----------------------------------------------------------------------------------
-# ACM Module Variables
+# ----------------------------------------------------------------------------------
+# IRSA Module Variables
 # ----------------------------------------------------------------------------------
 
-variable "base_domain" {
-  description = "The root domain for the ClearML deployment (e.g., clearml.sfeeser.com)."
+variable "cluster_name" {
+  description = "The name of the EKS cluster."
   type        = string
 }
 
-variable "hosted_zone_id" {
-  description = "The Route 53 Hosted Zone ID where the domain's DNS records are managed."
+variable "eks_oidc_provider" {
+  description = "The OIDC provider URL of the EKS cluster (e.g., oidc.eks.us-east-1.amazonaws.com/id/EXAMPLEID)."
+  type        = string
+}
+
+variable "eks_oidc_provider_arn" {
+  description = "The full ARN of the EKS OIDC provider."
+  type        = string
+}
+
+variable "s3_bucket_arn" {
+  description = "The ARN of the S3 bucket used by ClearML for artifact storage."
   type        = string
 }
