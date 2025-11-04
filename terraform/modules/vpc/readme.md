@@ -1,5 +1,5 @@
-https://alta3.slack.com/files/U91A32V2T/F09RJ3Q4YSU/image.png
 
+https://static.alta3.com/figures/clearml/image.png
 
 ```
                                            ┌──────────────────────────────────┐                                        
