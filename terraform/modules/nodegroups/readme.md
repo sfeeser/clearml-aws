@@ -1,8 +1,5 @@
 ## 📄 Nodegroups Module Documentation
 
-
-http://googleusercontent.com/immersive_entry_chip/0
-
 ### Module Overview: The Worker Servers
 
 The `nodegroups/` module is responsible for deploying and managing the **Worker Servers (EC2 instances)** that will run your Kubernetes workloads.
