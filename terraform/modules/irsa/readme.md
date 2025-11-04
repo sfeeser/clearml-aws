@@ -1,5 +1,3 @@
-That's an excellent next step. The **IRSA** module is the security module that ties the EKS cluster and the S3 storage together, translating your application's identity from a local Kubernetes service into an AWS permission.
-
 ### The `irsa/` Module (Application Identity Badges)
 
 For a racker and stacker, the **IRSA** (IAM Roles for Service Accounts) module replaces the old, insecure method of passing physical credentials (like an SSH key or hardcoded username/password) to an application.
