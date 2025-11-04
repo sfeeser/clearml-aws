@@ -1,6 +1,6 @@
 # S3 Module: The Dedicated Storage Array
 
-## Module Overview: Off-Cluster Storage
+### Module Overview: Off-Cluster Storage
 
 The `s3/` module provisions the highly durable, non-ephemeral storage required for **ClearML Enterprise**.  
 
@@ -14,7 +14,7 @@ The module provides **three distinct, highly secure storage volumes (buckets):**
 - `logs`
 
 
-## Racker and Stacker Translation
+### Racker and Stacker Translation
 
 | On-Premises Component | S3 (AWS) Component | Purpose |
 |------------------------|--------------------|----------|
@@ -24,7 +24,7 @@ The module provides **three distinct, highly secure storage volumes (buckets):**
 | ACL Setup / Volume Permissions | Bucket Ownership Enforcement | Simplifies permissions for the application identity (IRSA), preventing object write failures. |
 
 
-## Key Security and Reliability Features
+### Key Security and Reliability Features
 
 The `main.tf` file enforces the following best practices for production-ready storage:
 
@@ -44,7 +44,7 @@ The `main.tf` file enforces the following best practices for production-ready st
 5. **KMS Encryption:**  
    Server-side encryption is applied using the provided **KMS key alias**.
 
-## The Contract: Variables and Outputs
+### The Contract: Variables and Outputs
 
 ### Variables (`variables.tf`)
 
@@ -58,7 +58,7 @@ This module requires **five mandatory inputs**, defining project identity, bucke
 | `bucket_names` | list(string) | List of storage volumes required by ClearML (`artifacts`, `datasets`, `logs`). |
 | `kms_key_alias` | string | Alias for the AWS KMS key used for encryption. |
 
-### Outputs (`outputs.tf`)
+#### Outputs (`outputs.tf`)
 
 The single critical output is the **unique identifier for each storage volume**.
 
