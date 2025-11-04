@@ -38,7 +38,6 @@ clearml-eks/
 ├── outputs.tf
 ├── versions.tf
 ├── eks-cluster.tf
-├── node-group.tf
 ├── helm-clearml.tf
 └── providers.tf
 ```
