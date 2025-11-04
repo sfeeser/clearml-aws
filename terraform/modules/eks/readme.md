@@ -1,6 +1,6 @@
 ### Module Overview: The Managed Controller Node
 
-The `eks/` module provisions the **Kubernetes Control Plane (EKS)**. In your private cloud, this is the highly-available, secure **Master/Controller Node** running the API server, scheduler, and etcd.
+The `eks/` module provisions a **Kubernetes Control Plane** which AWS calls the "Elastic Kubernetes Service" or EKS**. In your private cloud, this is the highly-available, secure **Master/Controller Node** running the API server, scheduler, and etcd.
 
 In AWS, this is a **fully managed service**. This module simply creates the necessary identity and network pointers for AWS to deploy and maintain it in the private subnets we defined.
 
