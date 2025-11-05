@@ -42,17 +42,23 @@ provider "kubernetes" {
   }
 }
 
-# === S3 BUCKET (ACL + Versioning + Public Block) ===
+# === S3 BUCKET (no ACL inside) ===
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
 
 resource "aws_s3_bucket" "clearml_artifacts" {
   bucket        = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
-  acl           = "private"        # ← ACL set here (v4+)
   force_destroy = true
 }
 
+# --- ACL (non‑deprecated) ---
+resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  acl    = "private"
+}
+
+# --- Versioning ---
 resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
   versioning_configuration {
@@ -60,6 +66,7 @@ resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   }
 }
 
+# --- Public Access Block ---
 resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
 
