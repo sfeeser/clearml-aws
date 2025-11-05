@@ -23,7 +23,7 @@ resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   restrict_public_buckets = true
 }
 
-# === Install Helm + ALB Controller (using awskubectl) ===
+# === Install Helm + ALB Controller (using kubectl with v1beta1) ===
 resource "null_resource" "install_helm_and_alb" {
   triggers = {
     cluster_name     = var.cluster_name
@@ -48,17 +48,21 @@ resource "null_resource" "install_helm_and_alb" {
         sleep 10
       done
 
-      # Update kubeconfig with awskubectl (v1beta1)
-      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --alias ${var.cluster_name}
+      # Generate kubeconfig with v1beta1
+      KUBECONFIG=$(mktemp)
+      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --kubeconfig $KUBECONFIG
 
       # Install ALB Controller
       helm upgrade --install aws-load-balancer-controller \
         aws-load-balancer-webhook-service \
         --repo https://aws.github.io/eks-charts \
         --namespace kube-system \
+        --kubeconfig $KUBECONFIG \
         --set clusterName=${var.cluster_name} \
         --set serviceAccount.create=true \
         --wait --timeout 10m
+
+      rm $KUBECONFIG
     EOT
 
     interpreter = ["/bin/bash", "-c"]
@@ -79,14 +83,16 @@ resource "null_resource" "install_clearml" {
 
   provisioner "local-exec" {
     command = <<EOT
-      # Ensure kubeconfig
-      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --alias ${var.cluster_name}
+      # Generate kubeconfig
+      KUBECONFIG=$(mktemp)
+      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --kubeconfig $KUBECONFIG
 
       # Install ClearML
       helm upgrade --install clearml clearml \
         --repo https://allegroai.github.io/clearml-server \
         --namespace clearml \
         --create-namespace \
+        --kubeconfig $KUBECONFIG \
         --set clearml.host="clearml.${replace(module.eks.cluster_endpoint, "https://", "")}" \
         --set s3.bucket=${aws_s3_bucket.clearml_artifacts.bucket} \
         --set mongodb.auth.enabled=false \
@@ -110,6 +116,8 @@ resource "null_resource" "install_clearml" {
         --set fileserver.ingress.hosts[0].paths[0].path="/" \
         --set fileserver.ingress.hosts[0].paths[0].port=8081 \
         --wait --timeout 15m
+
+      rm $KUBECONFIG
     EOT
 
     interpreter = ["/bin/bash", "-c"]
