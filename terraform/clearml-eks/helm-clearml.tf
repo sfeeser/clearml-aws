@@ -23,7 +23,7 @@ resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   restrict_public_buckets = true
 }
 
-# === Install Helm + ALB Controller ===
+# === Install Helm + ALB Controller (using awskubectl) ===
 resource "null_resource" "install_helm_and_alb" {
   triggers = {
     cluster_name     = var.cluster_name
@@ -33,7 +33,7 @@ resource "null_resource" "install_helm_and_alb" {
 
   provisioner "local-exec" {
     command = <<EOT
-      # Install Helm if not present
+      # Install Helm
       if ! command -v helm >/dev/null 2>&1; then
         echo "Installing Helm..."
         curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -48,8 +48,8 @@ resource "null_resource" "install_helm_and_alb" {
         sleep 10
       done
 
-      # Update kubeconfig
-      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region}
+      # Update kubeconfig with awskubectl (v1beta1)
+      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --alias ${var.cluster_name}
 
       # Install ALB Controller
       helm upgrade --install aws-load-balancer-controller \
@@ -80,7 +80,7 @@ resource "null_resource" "install_clearml" {
   provisioner "local-exec" {
     command = <<EOT
       # Ensure kubeconfig
-      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region}
+      aws eks update-kubeconfig --name ${var.cluster_name} --region ${var.aws_region} --alias ${var.cluster_name}
 
       # Install ClearML
       helm upgrade --install clearml clearml \
