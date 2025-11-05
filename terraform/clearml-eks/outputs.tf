@@ -3,7 +3,7 @@ output "cluster_name" {
 }
 
 output "clearml_web_url" {
-  value = "http://clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+  value = "http://clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
 }
 
 output "s3_bucket" {

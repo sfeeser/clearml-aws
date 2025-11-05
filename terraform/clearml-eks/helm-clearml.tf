@@ -5,18 +5,8 @@ provider "helm" {
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
+      args        = ["eks", "get-token", "--cluster-name", var.cluster_name, "--region", var.aws_region]
     }
-  }
-}
-
-provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
   }
 }
 
@@ -35,23 +25,60 @@ resource "helm_release" "alb_controller" {
     name  = "serviceAccount.create"
     value = "true"
   }
+
+  # Wait for cluster AND node group
+  depends_on = [
+    module.eks.cluster_id,
+    module.eks.eks_managed_node_groups
+  ]
+}
+
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
+  }
 }
 
 # S3 Bucket for ClearML Artifacts
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
+# --- S3 BUCKET (no versioning, ACL, CORS, website inside) ---
+resource "random_pet" "bucket_suffix" {
+  length = 2
 }
 
 resource "aws_s3_bucket" "clearml_artifacts" {
-  bucket = "clearml-artifacts-${var.cluster_name}-${random_id.bucket_suffix.hex}"
+  bucket        = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
+  force_destroy = true
 }
 
+# --- Versioning ---
 resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
   versioning_configuration {
     status = "Enabled"
   }
 }
+
+# --- ACL ---
+resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  acl    = "private"
+}
+
+# --- Public Access Block ---
+resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+
 
 # ClearML Helm Chart
 resource "helm_release" "clearml" {
@@ -85,15 +112,15 @@ resource "helm_release" "clearml" {
       }
       apiserver = {
         ingress = {
-          enabled = true
-          className = "alb"
+          enabled     = true
+          className   = "alb"
           annotations = {
-            "alb.ingress.kubernetes.io/scheme" = "internet-facing"
+            "alb.ingress.kubernetes.io/scheme"      = "internet-facing"
             "alb.ingress.kubernetes.io/target-type" = "ip"
           }
           hosts = [
             {
-              host = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
               paths = [{ path = "/", port = 8008 }]
             }
           ]
@@ -101,11 +128,11 @@ resource "helm_release" "clearml" {
       }
       webserver = {
         ingress = {
-          enabled = true
+          enabled   = true
           className = "alb"
           hosts = [
             {
-              host = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
               paths = [{ path = "/", port = 8080 }]
             }
           ]
@@ -113,11 +140,11 @@ resource "helm_release" "clearml" {
       }
       fileserver = {
         ingress = {
-          enabled = true
+          enabled   = true
           className = "alb"
           hosts = [
             {
-              host = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
               paths = [{ path = "/", port = 8081 }]
             }
           ]
@@ -131,4 +158,3 @@ resource "helm_release" "clearml" {
 
   depends_on = [helm_release.alb_controller]
 }
-
