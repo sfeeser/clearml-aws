@@ -1,4 +1,4 @@
-# === S3 BUCKET (unchanged) ===
+# === S3 BUCKET ===
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
@@ -23,18 +23,28 @@ resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   restrict_public_buckets = true
 }
 
-# === ALB Controller via local-exec ===
-resource "null_resource" "install_alb_controller" {
+# === Install Helm + ALB Controller ===
+resource "null_resource" "install_helm_and_alb" {
   triggers = {
-    cluster_endpoint = module.eks.cluster_endpoint
     cluster_name     = var.cluster_name
+    aws_region       = var.aws_region
+    cluster_endpoint = module.eks.cluster_endpoint
   }
 
   provisioner "local-exec" {
     command = <<EOT
-      # Wait for cluster
+      # Install Helm if not present
+      if ! command -v helm >/dev/null 2>&1; then
+        echo "Installing Helm..."
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+        rm get_helm.sh
+      fi
+
+      # Wait for EKS cluster
+      echo "Waiting for EKS cluster to be ACTIVE..."
       until aws eks describe-cluster --name ${var.cluster_name} --region ${var.aws_region} --query 'cluster.status' --output text | grep -q "ACTIVE"; do
-        echo "Waiting for EKS cluster..."
         sleep 10
       done
 
@@ -50,6 +60,8 @@ resource "null_resource" "install_alb_controller" {
         --set serviceAccount.create=true \
         --wait --timeout 10m
     EOT
+
+    interpreter = ["/bin/bash", "-c"]
   }
 
   depends_on = [
@@ -58,7 +70,7 @@ resource "null_resource" "install_alb_controller" {
   ]
 }
 
-# === ClearML via local-exec ===
+# === Install ClearML ===
 resource "null_resource" "install_clearml" {
   triggers = {
     bucket_name      = aws_s3_bucket.clearml_artifacts.bucket
@@ -99,10 +111,12 @@ resource "null_resource" "install_clearml" {
         --set fileserver.ingress.hosts[0].paths[0].port=8081 \
         --wait --timeout 15m
     EOT
+
+    interpreter = ["/bin/bash", "-c"]
   }
 
   depends_on = [
-    null_resource.install_alb_controller,
+    null_resource.install_helm_and_alb,
     module.eks.cluster_id
   ]
 }
