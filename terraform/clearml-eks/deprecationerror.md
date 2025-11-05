@@ -1,172 +1,134 @@
-You're seeing this **deprecation warning** because the **Terraform AWS EKS module** you're using (likely version `~> 19.0`) is using the deprecated `inline_policy` argument in its internal `aws_iam_role` resource.
-
-> **Good news**: This is **just a warning**, not an error.  
-> **Your `terraform plan` and `apply` will still work perfectly.**
-
-But you want to **eliminate the warning** — clean code, future-proofing. Let's fix it **permanently**.
+Below is the **minimal, copy‑paste fix** that will **eliminate the new `s3:GetBucketAcl` error** (and keep the previous permission fixes).
 
 ---
 
-## Root Cause
+## 1. Add the missing S3 action to your IAM policy
 
-The EKS module creates IAM roles like this (simplified):
+### If you are using **the custom policy** (recommended)
+
+Open **IAM → Policies → `Terraform-EKS-ClearML-FullAccess`** → **Edit policy → JSON** and **add `s3:GetBucketAcl`** to the S3 block:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { ... existing EC2/EKS/IAM/KMS block ... },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketAcl",          // ← NEW
+        "s3:PutBucketVersioning",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::clearml-artifacts-*",
+        "arn:aws:s3:::clearml-artifacts-*/*"
+      ]
+    }
+  ]
+}
+```
+
+**Save** → **Re‑attach** to `iac-runner` if needed.
+
+---
+
+### If you are using **AdministratorAccess** (quick sandbox fix)
+
+You already have `s3:*`, so **skip this step** – the error would not appear.
+
+---
+
+## 2. (Optional but recommended) Use `aws_s3_bucket_acl` instead of the old `aws_s3_bucket` ACL block
+
+The EKS module v20+ prefers the **separate ACL resource** to avoid the `GetBucketAcl` call during reads.
+
+### Replace the bucket block in `helm-clearml.tf`
 
 ```hcl
-resource "aws_iam_role" "this" {
-  name = "eks-cluster-role"
-  assume_role_policy = "..."
+# --- old (causes GetBucketAcl) ---
+# resource "aws_s3_bucket" "clearml_artifacts" { ... }
 
-  inline_policy {
-    name   = "eks-policy"
-    policy = jsonencode({...})
+# --- NEW: separate bucket + ACL ---
+resource "random_pet" "bucket_suffix" {
+  length = 2
+}
+
+resource "aws_s3_bucket" "clearml_artifacts" {
+  bucket        = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_versioning" "clearml_artifacts" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 ```
 
-The `inline_policy {}` block is **deprecated** in the AWS provider v5+.
-
----
-
-## Solution: **Upgrade the EKS Module to v20+**
-
-The **official fix** is to **upgrade** the `terraform-aws-modules/eks/aws` module to **version 20 or higher**, which:
-
-- Removes `inline_policy`
-- Uses `aws_iam_role_policy` instead
-- Eliminates the warning
-
----
-
-### Step-by-Step Fix
-
-#### 1. **Update `eks-cluster.tf`**
-
-Change this line:
+> **Add `random` provider** (if not already in `versions.tf`):
 
 ```hcl
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.0"   # ← OLD
-  # ...
-}
-```
-
-**Replace with**:
-
-```hcl
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"   # ← NEW: Fixes deprecation
-  # ... rest of config unchanged
+terraform {
+  required_providers {
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
 }
 ```
 
 ---
 
-#### 2. **Upgrade Providers & Modules**
-
-Run:
+## 3. Clean up any stale state (the bucket that already exists)
 
 ```bash
-terraform init -upgrade
-```
+# Remove the old bucket reference from state
+terraform state rm aws_s3_bucket.clearml_artifacts || true
 
-This will:
-- Download the new EKS module (v20+)
-- Update provider constraints if needed
+# Re‑import the new bucket after apply (optional)
+# terraform import aws_s3_bucket.clearml_artifacts clearml-artifacts-<name>
+```
 
 ---
 
-#### 3. **Run Plan Again**
+## 4. Run the plan again
 
 ```bash
+terraform init -upgrade   # (if you added random provider)
 terraform plan
 ```
 
-**The warning will be GONE.**
+You should now see **no permission errors** and **no deprecation warnings**.
 
 ---
 
-## Why This Works
-
-| Version | `inline_policy` | Status |
-|--------|------------------|--------|
-| `~> 19.0` | Used | **Deprecated** → warning |
-| `~> 20.0` | Removed | **Clean** → no warning |
-
-> See official changelog:  
-> https://github.com/terraform-aws-modules/terraform-aws-eks/releases/tag/v20.0.0
-
----
-
-## Bonus: Confirm It’s Fixed
-
-After upgrade, check:
+## TL;DR – One‑liner for the IAM fix
 
 ```bash
-terraform plan | grep -i "deprecated"
-```
-
-→ Should return **nothing**.
-
----
-
-## Final Code Snippet (Updated)
-
-```hcl
-# eks-cluster.tf
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"   # ← This removes the warning
-
-  cluster_name                    = var.cluster_name
-  cluster_version                 = var.kubernetes_version
-  vpc_id                          = module.vpc.vpc_id
-  subnet_ids                      = module.vpc.private_subnets
-  cluster_endpoint_public_access  = true
-
-  eks_managed_node_groups = {
-    clearml = {
-      desired_size   = var.desired_nodes
-      instance_types = [var.node_instance_type]
-      key_name       = var.key_name
-
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size = 50
-            volume_type = "gp3"
-            encrypted   = true
-          }
-        }
-      }
-    }
-  }
-
-  tags = {
-    Environment = "dev"
-  }
-}
+# Add this line to your custom policy’s S3 action list:
+"s3:GetBucketAcl",
 ```
 
 ---
 
-## Summary
+**You’re done.**  
+Run `terraform plan` → clean → `terraform apply` → **ClearML will be up in ~15 min**.
 
-| Action | Command |
-|-------|--------|
-| **Fix warning** | Change `version = "~> 19.0"` → `version = "~> 20.0"` |
-| **Apply fix** | `terraform init -upgrade` |
-| **Verify** | `terraform plan` → no deprecation warnings |
-
----
-
-**You’re now running clean, future-proof Terraform.**
-
-Next: Run `terraform apply` in your **sandbox account** — and let me know when it’s up! I’ll help you:
-- Access the ClearML UI
-- Add HTTPS
-- Destroy safely
-
-**Clean code, zero warnings, full control.** You're golden!
+When it’s live, just say **`GO`** and I’ll give you the final access + destroy script.
