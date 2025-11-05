@@ -26,7 +26,6 @@ resource "helm_release" "alb_controller" {
     value = "true"
   }
 
-  # Wait for cluster AND node group
   depends_on = [
     module.eks.cluster_id,
     module.eks.eks_managed_node_groups
@@ -43,13 +42,14 @@ provider "kubernetes" {
   }
 }
 
-# S3 Bucket for ClearML Artifacts
+# === S3 BUCKET (ACL + Versioning + Public Block) ===
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
 
 resource "aws_s3_bucket" "clearml_artifacts" {
   bucket        = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
+  acl           = "private"        # ← ACL set here (v4+)
   force_destroy = true
 }
 
@@ -58,11 +58,6 @@ resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   versioning_configuration {
     status = "Enabled"
   }
-}
-
-resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
-  bucket = aws_s3_bucket.clearml_artifacts.id
-  acl    = "private"
 }
 
 resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
@@ -74,7 +69,7 @@ resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   restrict_public_buckets = true
 }
 
-# ClearML Helm Chart
+# === ClearML Helm Chart ===
 resource "helm_release" "clearml" {
   name       = "clearml"
   repository = "https://allegroai.github.io/clearml-server"
@@ -85,7 +80,6 @@ resource "helm_release" "clearml" {
   values = [
     yamlencode({
       clearml = {
-        # Use cluster_endpoint (available at plan time)
         host = "clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
       }
       elasticsearch = {
@@ -151,7 +145,6 @@ resource "helm_release" "clearml" {
     })
   ]
 
-  # Wait for ALB controller and cluster
   depends_on = [
     helm_release.alb_controller,
     module.eks.cluster_id
