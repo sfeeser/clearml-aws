@@ -2,6 +2,7 @@ provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
@@ -9,13 +10,13 @@ provider "helm" {
         "eks", "get-token",
         "--cluster-name", var.cluster_name,
         "--region", var.aws_region,
-        "--output=json"   # ← FORCES v1beta1
+        "--output", "json"   # ← Forces correct format
       ]
     }
   }
 }
 
-# ALB Ingress Controller
+# ALB Ingress Controller – waits for cluster
 resource "helm_release" "alb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -33,6 +34,7 @@ resource "helm_release" "alb_controller" {
     value = "true"
   }
 
+  # CRITICAL: Wait for EKS cluster to be fully ready
   depends_on = [
     module.eks.cluster_id,
     module.eks.eks_managed_node_groups
@@ -42,13 +44,14 @@ resource "helm_release" "alb_controller" {
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
     args        = [
       "eks", "get-token",
       "--cluster-name", var.cluster_name,
-      "--output=json"   # ← FORCES v1beta1
+      "--output", "json"
     ]
   }
 }
