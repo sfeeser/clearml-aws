@@ -1,85 +1,18 @@
-Below is a **complete, copy-paste fix** for the **three permission errors** you’re seeing:
-
-| Error | Missing Permission |
-|------|--------------------|
-| `s3:GetBucketPolicy` | `s3:GetBucketPolicy` |
-| `kms:CreateKey` | `kms:CreateKey`, `kms:EnableKeyRotation`, `kms:TagResource` |
-| `iam:CreatePolicy` | `iam:CreatePolicy`, `iam:TagPolicy` |
-
-Your IAM user (`iac-runner`) has **some** permissions, but **not enough** for the EKS module v20+ and the S3 bucket.
+Below is the **minimal, copy‑paste fix** that will **eliminate the new `s3:GetBucketAcl` error** (and keep the previous permission fixes).
 
 ---
 
-## QUICK FIX (Sandbox – Recommended)
+## 1. Add the missing S3 action to your IAM policy
 
-> **Attach `AdministratorAccess` to `iac-runner`** – **all errors disappear instantly**.
+### If you are using **the custom policy** (recommended)
 
-### AWS Console Steps:
-1. Go to **IAM → Users → `iac-runner`**
-2. **Add permissions** → **Attach policies directly**
-3. Search `AdministratorAccess` → **Attach policy**
-
-Then:
-
-```bash
-terraform plan
-```
-
-**All errors gone. Ready for `apply`.**
-
----
-
-## CLEAN FIX (Least Privilege – Production-Ready)
-
-Replace the current policy with this **custom policy** that gives **exactly** what Terraform needs.
-
-### 1. Create Custom Policy (IAM → Policies → Create policy → JSON)
+Open **IAM → Policies → `Terraform-EKS-ClearML-FullAccess`** → **Edit policy → JSON** and **add `s3:GetBucketAcl`** to the S3 block:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:*",
-        "elasticloadbalancing:*",
-        "autoscaling:*",
-        "cloudformation:*",
-        "logs:*",
-        "ssm:*",
-        "eks:*",
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
-        "iam:GetRole",
-        "iam:ListRoles",
-        "iam:PassRole",
-        "iam:CreateServiceLinkedRole",
-        "iam:ListAttachedRolePolicies",
-        "iam:ListRolePolicies",
-        "iam:TagRole",
-        "iam:UntagRole",
-        "iam:CreatePolicy",
-        "iam:DeletePolicy",
-        "iam:TagPolicy",
-        "iam:CreateInstanceProfile",
-        "iam:DeleteInstanceProfile",
-        "iam:AddRoleToInstanceProfile",
-        "iam:RemoveRoleFromInstanceProfile",
-        "iam:GetInstanceProfile",
-        "kms:CreateKey",
-        "kms:DescribeKey",
-        "kms:EnableKeyRotation",
-        "kms:TagResource",
-        "kms:ScheduleKeyDeletion",
-        "kms:CancelKeyDeletion"
-      ],
-      "Resource": "*"
-    },
+    { ... existing EC2/EKS/IAM/KMS block ... },
     {
       "Effect": "Allow",
       "Action": [
@@ -88,6 +21,7 @@ Replace the current policy with this **custom policy** that gives **exactly** wh
         "s3:PutBucketPolicy",
         "s3:DeleteBucketPolicy",
         "s3:GetBucketPolicy",
+        "s3:GetBucketAcl",          // ← NEW
         "s3:PutBucketVersioning",
         "s3:ListBucket",
         "s3:GetBucketLocation",
@@ -104,42 +38,50 @@ Replace the current policy with this **custom policy** that gives **exactly** wh
 }
 ```
 
-- **Name**: `Terraform-EKS-ClearML-FullAccess`
-- **Attach** to `iac-runner`
+**Save** → **Re‑attach** to `iac-runner` if needed.
 
 ---
 
-## 2. Update `helm-clearml.tf` (Optional: Fix S3 Bucket Name Conflict)
+### If you are using **AdministratorAccess** (quick sandbox fix)
 
-The error mentions a bucket that **already exists** (`clearml-artifacts-clearml-dev-fd5ed756`).  
-Let’s **avoid conflicts** by using a **unique suffix**.
+You already have `s3:*`, so **skip this step** – the error would not appear.
 
-### Replace this block:
+---
 
-```hcl
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
-}
+## 2. (Optional but recommended) Use `aws_s3_bucket_acl` instead of the old `aws_s3_bucket` ACL block
 
-resource "aws_s3_bucket" "clearml_artifacts" {
-  bucket = "clearml-artifacts-${var.cluster_name}-${random_id.bucket_suffix.hex}"
-}
-```
+The EKS module v20+ prefers the **separate ACL resource** to avoid the `GetBucketAcl` call during reads.
 
-**With this improved version** (avoids reuse):
+### Replace the bucket block in `helm-clearml.tf`
 
 ```hcl
+# --- old (causes GetBucketAcl) ---
+# resource "aws_s3_bucket" "clearml_artifacts" { ... }
+
+# --- NEW: separate bucket + ACL ---
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
 
 resource "aws_s3_bucket" "clearml_artifacts" {
-  bucket = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
-  force_destroy = true  # Allows destroy even if not empty
+  bucket        = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_versioning" "clearml_artifacts" {
+  bucket = aws_s3_bucket.clearml_artifacts.id
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 ```
 
-> Add `random_pet` provider in `versions.tf`:
+> **Add `random` provider** (if not already in `versions.tf`):
 
 ```hcl
 terraform {
@@ -154,91 +96,39 @@ terraform {
 
 ---
 
-## 3. Final `providers.tf`
-
-```hcl
-provider "aws" {
-  region  = var.aws_region
-  profile = "terraform-eks-sandbox"  # or your profile
-}
-```
-
----
-
-## 4. Run This Now
+## 3. Clean up any stale state (the bucket that already exists)
 
 ```bash
-# 1. Upgrade modules
-terraform init -upgrade
-
-# 2. Clean state (optional, if bucket exists)
+# Remove the old bucket reference from state
 terraform state rm aws_s3_bucket.clearml_artifacts || true
 
-# 3. Plan
+# Re‑import the new bucket after apply (optional)
+# terraform import aws_s3_bucket.clearml_artifacts clearml-artifacts-<name>
+```
+
+---
+
+## 4. Run the plan again
+
+```bash
+terraform init -upgrade   # (if you added random provider)
 terraform plan
 ```
 
-**All errors gone.**
+You should now see **no permission errors** and **no deprecation warnings**.
 
 ---
 
-## Expected Output
-
-```text
-Plan: 52 to add, 0 to change, 0 to destroy.
-```
-
-Then:
+## TL;DR – One‑liner for the IAM fix
 
 ```bash
-terraform apply
+# Add this line to your custom policy’s S3 action list:
+"s3:GetBucketAcl",
 ```
 
 ---
 
-## After Success – Access ClearML
+**You’re done.**  
+Run `terraform plan` → clean → `terraform apply` → **ClearML will be up in ~15 min**.
 
-```bash
-aws eks update-kubeconfig --name clearml-dev --region us-east-1
-kubectl get pods -n clearml -w
-```
-
-**UI**:  
-```
-http://clearml.clearml-dev.eks.amazonaws.com
-```
-
----
-
-## Cleanup
-
-```bash
-terraform destroy -auto-approve
-```
-
----
-
-## Summary
-
-| Error | Fixed By |
-|------|---------|
-| `s3:GetBucketPolicy` | Add `s3:GetBucketPolicy` |
-| `kms:CreateKey` | Add `kms:CreateKey`, `EnableKeyRotation` |
-| `iam:CreatePolicy` | Add `iam:CreatePolicy`, `TagPolicy` |
-| Bucket conflict | Use `random_pet` + `force_destroy` |
-
----
-
-**You are now 100% ready.**
-
-Run:
-
-```bash
-terraform plan
-```
-
-**Paste the output here** if any error remains.
-
-Otherwise, type: **`GO`** → I’ll give you the **final `apply` + `access` + `destroy` script**.
-
-Let’s launch!
+When it’s live, just say **`GO`** and I’ll give you the final access + destroy script.
