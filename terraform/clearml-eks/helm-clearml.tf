@@ -44,7 +44,6 @@ provider "kubernetes" {
 }
 
 # S3 Bucket for ClearML Artifacts
-# --- S3 BUCKET (no versioning, ACL, CORS, website inside) ---
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
@@ -54,7 +53,6 @@ resource "aws_s3_bucket" "clearml_artifacts" {
   force_destroy = true
 }
 
-# --- Versioning ---
 resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
   versioning_configuration {
@@ -62,13 +60,11 @@ resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   }
 }
 
-# --- ACL ---
 resource "aws_s3_bucket_acl" "clearml_artifacts_acl" {
   bucket = aws_s3_bucket.clearml_artifacts.id
   acl    = "private"
 }
 
-# --- Public Access Block ---
 resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
 
@@ -77,8 +73,6 @@ resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
-
-
 
 # ClearML Helm Chart
 resource "helm_release" "clearml" {
@@ -91,7 +85,8 @@ resource "helm_release" "clearml" {
   values = [
     yamlencode({
       clearml = {
-        host = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+        # Use cluster_endpoint (available at plan time)
+        host = "clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
       }
       elasticsearch = {
         replicas = 1
@@ -120,7 +115,7 @@ resource "helm_release" "clearml" {
           }
           hosts = [
             {
-              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
               paths = [{ path = "/", port = 8008 }]
             }
           ]
@@ -132,7 +127,7 @@ resource "helm_release" "clearml" {
           className = "alb"
           hosts = [
             {
-              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
               paths = [{ path = "/", port = 8080 }]
             }
           ]
@@ -144,7 +139,7 @@ resource "helm_release" "clearml" {
           className = "alb"
           hosts = [
             {
-              host  = "clearml.${module.eks.cluster_id}.eks.amazonaws.com"
+              host  = "clearml.${replace(module.eks.cluster_endpoint, "https://", "")}"
               paths = [{ path = "/", port = 8081 }]
             }
           ]
@@ -156,5 +151,9 @@ resource "helm_release" "clearml" {
     })
   ]
 
-  depends_on = [helm_release.alb_controller]
+  # Wait for ALB controller and cluster
+  depends_on = [
+    helm_release.alb_controller,
+    module.eks.cluster_id
+  ]
 }
