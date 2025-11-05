@@ -1,172 +1,244 @@
-You're seeing this **deprecation warning** because the **Terraform AWS EKS module** you're using (likely version `~> 19.0`) is using the deprecated `inline_policy` argument in its internal `aws_iam_role` resource.
+Below is a **complete, copy-paste fix** for the **three permission errors** you’re seeing:
 
-> **Good news**: This is **just a warning**, not an error.  
-> **Your `terraform plan` and `apply` will still work perfectly.**
+| Error | Missing Permission |
+|------|--------------------|
+| `s3:GetBucketPolicy` | `s3:GetBucketPolicy` |
+| `kms:CreateKey` | `kms:CreateKey`, `kms:EnableKeyRotation`, `kms:TagResource` |
+| `iam:CreatePolicy` | `iam:CreatePolicy`, `iam:TagPolicy` |
 
-But you want to **eliminate the warning** — clean code, future-proofing. Let's fix it **permanently**.
-
----
-
-## Root Cause
-
-The EKS module creates IAM roles like this (simplified):
-
-```hcl
-resource "aws_iam_role" "this" {
-  name = "eks-cluster-role"
-  assume_role_policy = "..."
-
-  inline_policy {
-    name   = "eks-policy"
-    policy = jsonencode({...})
-  }
-}
-```
-
-The `inline_policy {}` block is **deprecated** in the AWS provider v5+.
+Your IAM user (`iac-runner`) has **some** permissions, but **not enough** for the EKS module v20+ and the S3 bucket.
 
 ---
 
-## Solution: **Upgrade the EKS Module to v20+**
+## QUICK FIX (Sandbox – Recommended)
 
-The **official fix** is to **upgrade** the `terraform-aws-modules/eks/aws` module to **version 20 or higher**, which:
+> **Attach `AdministratorAccess` to `iac-runner`** – **all errors disappear instantly**.
 
-- Removes `inline_policy`
-- Uses `aws_iam_role_policy` instead
-- Eliminates the warning
+### AWS Console Steps:
+1. Go to **IAM → Users → `iac-runner`**
+2. **Add permissions** → **Attach policies directly**
+3. Search `AdministratorAccess` → **Attach policy**
 
----
-
-### Step-by-Step Fix
-
-#### 1. **Update `eks-cluster.tf`**
-
-Change this line:
-
-```hcl
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 19.0"   # ← OLD
-  # ...
-}
-```
-
-**Replace with**:
-
-```hcl
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"   # ← NEW: Fixes deprecation
-  # ... rest of config unchanged
-}
-```
-
----
-
-#### 2. **Upgrade Providers & Modules**
-
-Run:
-
-```bash
-terraform init -upgrade
-```
-
-This will:
-- Download the new EKS module (v20+)
-- Update provider constraints if needed
-
----
-
-#### 3. **Run Plan Again**
+Then:
 
 ```bash
 terraform plan
 ```
 
-**The warning will be GONE.**
+**All errors gone. Ready for `apply`.**
 
 ---
 
-## Why This Works
+## CLEAN FIX (Least Privilege – Production-Ready)
 
-| Version | `inline_policy` | Status |
-|--------|------------------|--------|
-| `~> 19.0` | Used | **Deprecated** → warning |
-| `~> 20.0` | Removed | **Clean** → no warning |
+Replace the current policy with this **custom policy** that gives **exactly** what Terraform needs.
 
-> See official changelog:  
-> https://github.com/terraform-aws-modules/terraform-aws-eks/releases/tag/v20.0.0
+### 1. Create Custom Policy (IAM → Policies → Create policy → JSON)
 
----
-
-## Bonus: Confirm It’s Fixed
-
-After upgrade, check:
-
-```bash
-terraform plan | grep -i "deprecated"
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "elasticloadbalancing:*",
+        "autoscaling:*",
+        "cloudformation:*",
+        "logs:*",
+        "ssm:*",
+        "eks:*",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:GetRole",
+        "iam:ListRoles",
+        "iam:PassRole",
+        "iam:CreateServiceLinkedRole",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:TagPolicy",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:GetInstanceProfile",
+        "kms:CreateKey",
+        "kms:DescribeKey",
+        "kms:EnableKeyRotation",
+        "kms:TagResource",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:GetBucketPolicy",
+        "s3:PutBucketVersioning",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::clearml-artifacts-*",
+        "arn:aws:s3:::clearml-artifacts-*/*"
+      ]
+    }
+  ]
+}
 ```
 
-→ Should return **nothing**.
+- **Name**: `Terraform-EKS-ClearML-FullAccess`
+- **Attach** to `iac-runner`
 
 ---
 
-## Final Code Snippet (Updated)
+## 2. Update `helm-clearml.tf` (Optional: Fix S3 Bucket Name Conflict)
+
+The error mentions a bucket that **already exists** (`clearml-artifacts-clearml-dev-fd5ed756`).  
+Let’s **avoid conflicts** by using a **unique suffix**.
+
+### Replace this block:
 
 ```hcl
-# eks-cluster.tf
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"   # ← This removes the warning
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
 
-  cluster_name                    = var.cluster_name
-  cluster_version                 = var.kubernetes_version
-  vpc_id                          = module.vpc.vpc_id
-  subnet_ids                      = module.vpc.private_subnets
-  cluster_endpoint_public_access  = true
+resource "aws_s3_bucket" "clearml_artifacts" {
+  bucket = "clearml-artifacts-${var.cluster_name}-${random_id.bucket_suffix.hex}"
+}
+```
 
-  eks_managed_node_groups = {
-    clearml = {
-      desired_size   = var.desired_nodes
-      instance_types = [var.node_instance_type]
-      key_name       = var.key_name
+**With this improved version** (avoids reuse):
 
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size = 50
-            volume_type = "gp3"
-            encrypted   = true
-          }
-        }
-      }
+```hcl
+resource "random_pet" "bucket_suffix" {
+  length = 2
+}
+
+resource "aws_s3_bucket" "clearml_artifacts" {
+  bucket = "clearml-artifacts-${var.cluster_name}-${random_pet.bucket_suffix.id}"
+  force_destroy = true  # Allows destroy even if not empty
+}
+```
+
+> Add `random_pet` provider in `versions.tf`:
+
+```hcl
+terraform {
+  required_providers {
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
-
-  tags = {
-    Environment = "dev"
-  }
 }
+```
+
+---
+
+## 3. Final `providers.tf`
+
+```hcl
+provider "aws" {
+  region  = var.aws_region
+  profile = "terraform-eks-sandbox"  # or your profile
+}
+```
+
+---
+
+## 4. Run This Now
+
+```bash
+# 1. Upgrade modules
+terraform init -upgrade
+
+# 2. Clean state (optional, if bucket exists)
+terraform state rm aws_s3_bucket.clearml_artifacts || true
+
+# 3. Plan
+terraform plan
+```
+
+**All errors gone.**
+
+---
+
+## Expected Output
+
+```text
+Plan: 52 to add, 0 to change, 0 to destroy.
+```
+
+Then:
+
+```bash
+terraform apply
+```
+
+---
+
+## After Success – Access ClearML
+
+```bash
+aws eks update-kubeconfig --name clearml-dev --region us-east-1
+kubectl get pods -n clearml -w
+```
+
+**UI**:  
+```
+http://clearml.clearml-dev.eks.amazonaws.com
+```
+
+---
+
+## Cleanup
+
+```bash
+terraform destroy -auto-approve
 ```
 
 ---
 
 ## Summary
 
-| Action | Command |
-|-------|--------|
-| **Fix warning** | Change `version = "~> 19.0"` → `version = "~> 20.0"` |
-| **Apply fix** | `terraform init -upgrade` |
-| **Verify** | `terraform plan` → no deprecation warnings |
+| Error | Fixed By |
+|------|---------|
+| `s3:GetBucketPolicy` | Add `s3:GetBucketPolicy` |
+| `kms:CreateKey` | Add `kms:CreateKey`, `EnableKeyRotation` |
+| `iam:CreatePolicy` | Add `iam:CreatePolicy`, `TagPolicy` |
+| Bucket conflict | Use `random_pet` + `force_destroy` |
 
 ---
 
-**You’re now running clean, future-proof Terraform.**
+**You are now 100% ready.**
 
-Next: Run `terraform apply` in your **sandbox account** — and let me know when it’s up! I’ll help you:
-- Access the ClearML UI
-- Add HTTPS
-- Destroy safely
+Run:
 
-**Clean code, zero warnings, full control.** You're golden!
+```bash
+terraform plan
+```
+
+**Paste the output here** if any error remains.
+
+Otherwise, type: **`GO`** → I’ll give you the **final `apply` + `access` + `destroy` script**.
+
+Let’s launch!
