@@ -20,9 +20,8 @@ module "eks" {
       desired_size = var.desired_nodes
       min_size     = 1
       max_size     = 5
-
       instance_types = [var.node_instance_type]
-      key_name       = var.key_name
+      key_name       = null
 
       block_device_mappings = {
         xvda = {
