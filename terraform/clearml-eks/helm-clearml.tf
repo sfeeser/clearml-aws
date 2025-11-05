@@ -10,12 +10,14 @@ provider "helm" {
   }
 }
 
-# ALB Ingress Controller
+# ALB Ingress Controller – waits for cluster
 resource "helm_release" "alb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
+  timeout    = 600
+  wait       = true
 
   set {
     name  = "clusterName"
@@ -26,6 +28,7 @@ resource "helm_release" "alb_controller" {
     value = "true"
   }
 
+  # Wait for EKS cluster to be ready
   depends_on = [
     module.eks.cluster_id,
     module.eks.eks_managed_node_groups
@@ -42,7 +45,7 @@ provider "kubernetes" {
   }
 }
 
-# === S3 BUCKET (NO ACL RESOURCE) ===
+# === S3 BUCKET (NO ACL) ===
 resource "random_pet" "bucket_suffix" {
   length = 2
 }
@@ -52,7 +55,6 @@ resource "aws_s3_bucket" "clearml_artifacts" {
   force_destroy = true
 }
 
-# --- Versioning ---
 resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
   versioning_configuration {
@@ -60,10 +62,8 @@ resource "aws_s3_bucket_versioning" "clearml_artifacts" {
   }
 }
 
-# --- Public Access Block (this disables ACLs) ---
 resource "aws_s3_bucket_public_access_block" "clearml_artifacts" {
   bucket = aws_s3_bucket.clearml_artifacts.id
-
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -77,6 +77,8 @@ resource "helm_release" "clearml" {
   chart      = "clearml"
   namespace  = "clearml"
   create_namespace = true
+  timeout    = 900
+  wait       = true
 
   values = [
     yamlencode({
