@@ -40,12 +40,14 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
    | Ansible | 2.16 or newer | Configuration and Helm automation |
    | jq, make | - | Helper utilities |
 
+   > Note: See [here](installation_supplement.md) for detailed instructions.
+
    Install Ansible collections:
    ```bash
    ansible-galaxy collection install kubernetes.core community.kubernetes
    ```
 
-3. Configure AWS credentials:
+4. Configure AWS credentials:
 
    ```bash
    aws configure
@@ -54,14 +56,14 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
    export AWS_REGION=us-east-1
    ```
 
-4. Clone this repository:
+5. Clone this repository:
 
    ```bash
    git clone https://github.com/sfeeser/clearml-aws.git
    cd clearml-aws
    ```
 
-5. Edit spec/config.yaml to match your sandbox region and naming:
+6. Edit spec/config.yaml to match your sandbox region and naming:
 
    ```yaml
    aws:
@@ -75,25 +77,25 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
 
    Note: S3 bucket names must be globally unique across all AWS users.
 
-6. Initialize Terraform:
+7. Initialize Terraform:
 
    ```bash
    make init
    ```
 
-7. (Optional) Preview the Terraform plan:
+8. (Optional) Preview the Terraform plan:
 
    ```bash
    make plan
    ```
 
-8. Apply the Terraform configuration:
+9. Apply the Terraform configuration:
 
    ```bash
    make apply
    ```
 
-9. Terraform provisions the following resources:
+10. Terraform provisions the following resources:
 
    * VPC, subnets, routing, and gateways
    * EKS cluster and nodegroups
@@ -101,13 +103,13 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
    * S3 buckets for artifacts, datasets, and logs
    * Optional ACM certificate and Route53 DNS entry
 
-10. View Terraform outputs:
+11. View Terraform outputs:
 
     ```bash
     terraform -chdir=terraform/stacks/aws-clearml output
     ```
 
-11. Export the kubeconfig path:
+12. Export the kubeconfig path:
 
     ```bash
     export KUBECONFIG=$(terraform -chdir=terraform/stacks/aws-clearml output -raw kubeconfig_path)
@@ -115,21 +117,21 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
     # Verify that the cluster is reachable before continuing
     ```
 
-12. Deploy ClearML into the cluster using Ansible:
+13. Deploy ClearML into the cluster using Ansible:
 
     ```bash
     cd ansible
     ansible-playbook -i inventories/example/hosts.yml playbooks/site.yml
     ```
 
-13. Ansible performs the following:
+14. Ansible performs the following:
 
     * Creates the namespace "clearml"
     * Renders Helm values from spec/config.yaml
     * Installs ClearML via Helm
     * Runs readiness checks
 
-14. Verify the ClearML deployment:
+15. Verify the ClearML deployment:
 
     ```bash
     kubectl get pods -n clearml
@@ -144,13 +146,13 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
 
     Visit the listed hostname or load balancer URL in your browser.
 
-15. (Optional) Uninstall ClearML before teardown:
+16. (Optional) Uninstall ClearML before teardown:
 
     ```bash
     kubectl delete ns clearml --ignore-not-found --wait=true
     ```
 
-16. Destroy all AWS infrastructure:
+17. Destroy all AWS infrastructure:
 
     ```bash
     make destroy
