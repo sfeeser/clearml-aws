@@ -54,7 +54,7 @@ provider "azurerm" {
 # -------------------------------
 variable "location"            { default = "eastus" }
 variable "cluster_name"        { default = "clearml-dev" }
-variable "kubernetes_version"  { default = "1.30" }
+variable "kubernetes_version"  { default = "1.32" }
 variable "worker_node_count"   { default = 2 }
 variable "ssh_public_key"      { default = "~/.ssh/id_rsa.pub" }
 
@@ -122,7 +122,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   default_node_pool {
     name                = "default"
     node_count          = var.worker_node_count
-    vm_size             = "Standard_D4s_v5"  # 4 vCPU, 16 GB RAM
+    vm_size             = "Standard_B4ms"  # 4 vCPU, 16 GB RAM
     vnet_subnet_id      = azurerm_subnet.aks_subnet.id
     os_disk_size_gb     = 64
   }
@@ -141,6 +141,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   network_profile {
     network_plugin    = "azure"
     load_balancer_sku = "standard"
+    service_cidr      = "172.16.0.0/16"
+    dns_service_ip    = "172.16.0.10"
   }
 }
 
