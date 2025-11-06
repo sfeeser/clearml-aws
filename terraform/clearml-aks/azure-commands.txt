@@ -1,0 +1,60 @@
+ cd clearml-aws/
+ git pull
+ clear
+ ll
+ cd terraform/clearml-aks/
+ ll
+ terraform init
+ terraform validate
+ terraform plan
+ git pull
+ terraform init
+ terraform validate
+ terraform plan
+ printenv 
+ printenv | grep ARM
+ terraform plan
+ curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+ az account show
+ az login
+ az account show
+ az account list --output table
+ printenv | grep ARM
+ terraform plan
+ terraform apply
+ terraform init
+ terraform validate
+ terraform plan
+ terraform apply
+ az vm list-skus --location eastus --size D --all --query "[?family=='dSeries'].name" -o table
+ az vm list-skus --location eastus --size D --all 
+ az vm list-skus   --location eastus   --size Standard_D   --query "[?contains(name, 'D') && contains(name, 's_') && contains(capabilities, 'vCPUs==`4`') && contains(capabilities, 'MemoryGB==`16`')].{Name:name, Tier:tier, Size:size}"   --output table
+ az vm list-skus   --location eastus   --size Standard_D   --query "[?contains(name, 'D') && contains(name, 's_') && contains(capabilities, 'vCPUs==4') && contains(capabilities, 'MemoryGB==16')].{Name:name, Tier:tier, Size:size}"   --output table
+ az vm list-skus   --location eastus   --size Standard_D   --query "[?contains(name, 'D') && contains(name, 's_') && contains(capabilities, 'vCPUs==`4`') && contains(capabilities, 'MemoryGB==`16`')].{Name:name, Tier:tier, Size:size}"   --output table
+ az vm list-skus   --location eastus   --size Standard_D   --query "[?contains(name, 'D') && contains(name, 's_') && contains(capabilities, 'vCPUs===="4"') && contains(capabilities, 'MemoryGB=="16"')].{Name:name, Tier:tier, Size:size}"   --output table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <= `16` && vCPU >= `2`].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <= 16 && vCPU >= 2].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <= `16` && vCPU >= `2`].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <=16 && vCPU >=2].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <= `16` && vCPU >= `2`].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus --location eastus --all --query "[?restrictions[0].reasonCode == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs']?.value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB']?.value | [0])} | [?MemoryGB <=16 && vCPU >=2].[Name, vCPU, MemoryGB]" -o table
+ az vm list-skus   --location eastus   --all   --query "[?restrictions == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs'].value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB'].value | [0])} | [?MemoryGB <= `16` && vCPU >= `2`].[Name, vCPU, MemoryGB]"   --output table
+ az vm list-skus   --location eastus   --all   --query "[?restrictions == null || restrictions[0].reasonCode != 'NotAvailableForSubscription'].{Name:name, vCPU:to_number(capabilities[?name=='vCPUs'].value | [0]), MemoryGB:to_number(capabilities[?name=='MemoryGB'].value | [0])} | [?MemoryGB <= 16 && vCPU >= 2].[Name, vCPU, MemoryGB]"   --output table
+ az vm list-skus --location eastus --all   --output table
+ az vm list-skus --location eastus --all   --output table
+ az vm list-skus --location eastus --all   --output table > find-vm.txt
+ terraform init
+ terraform validate
+ terraform plan
+ terraform apply
+ terraform init
+ terraform validate
+ terraform plan
+ terraform apply
+ terraform init
+ terraform validate
+ terraform plan
+ terraform destroy
+ az account show
+ history 60
+ history 60 > azure-commands.txt
