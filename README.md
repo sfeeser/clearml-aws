@@ -47,7 +47,9 @@ These layers are defined semantically through the SAAYN Manifesto (see saayn/man
    ansible-galaxy collection install kubernetes.core community.kubernetes
    ```
 
-4. Configure AWS credentials:
+4. Configure AWS credentials: 
+
+   > `aws configure` credentials are found on the AWS Access Portal page (the first after logging into a sandbox account), select 'AccessKeys' to see them
 
    ```bash
    aws configure
