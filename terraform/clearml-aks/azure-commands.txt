@@ -58,3 +58,35 @@
  az account show
  history 60
  history 60 > azure-commands.txt
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+mkdir -p ~/.kube
+kubectl --kubeconfig ~/.kube/clearml-dev.config get nodes -o wide
+
+terraform output -raw kubeconfig > ~/.kube/clearml-dev.config
+# Test cluster access
+kubectl --kubeconfig ~/.kube/clearml-dev.config get nodes -o wide
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+kubectl version --client
+kubectl get nodes
+terraform output -raw kubeconfig > ~/.kube/clearml-dev.config
+mkdir -p ~/.kube
+terraform output -raw kubeconfig > ~/.kube/clearml-dev.config
+kubectl --kubeconfig ~/.kube/clearml-dev.config get nodes -o wide
+kubectl get nodes
+export KUBECONFIG=~/.kube/clearml-dev.config
+echo 'export KUBECONFIG=~/.kube/clearml-dev.config' >> ~/.bashrc
+kubectl get nodes
+kubectl get pods --all-namespaces
+# Install Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# Add repo
+helm repo add clearml https://clearml.github.io/helm-charts
+helm repo update
+# Install (dev mode)
+helm install clearml-dev clearml/clearml   --namespace clearml --create-namespace   --set global.ingress.enabled=true   --set global.ingress.host=clearml-dev.$(terraform output -raw resource_group).nip.io
+history
+kubectl get svc -n clearml clearml-dev-clearml-webserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
