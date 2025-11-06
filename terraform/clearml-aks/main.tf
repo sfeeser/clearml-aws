@@ -1,4 +1,5 @@
 # main.tf — FULLY SELF-CONTAINED AZURE AKS TERRAFORM
+# Uses ARM_* environment variables automatically (no tfvars needed)
 
 terraform {
   required_version = ">= 1.5"
@@ -10,18 +11,52 @@ terraform {
   }
 }
 
+# --------------------------------------------------------------
+# Optional variables – allow override via TF_VAR_... or tfvars
+# But if ARM_* env vars are set, Terraform auto-uses them
+# --------------------------------------------------------------
+variable "arm_tenant_id" {
+  type    = string
+  default = null
+}
+
+variable "arm_client_id" {
+  type    = string
+  default = null
+}
+
+variable "arm_client_secret" {
+  type      = string
+  default   = null
+  sensitive = true
+}
+
+variable "arm_subscription_id" {
+  type    = string
+  default = null
+}
+
+# --------------------------------------------------------------
+# Provider – reads ARM_* env vars automatically
+# --------------------------------------------------------------
 provider "azurerm" {
   features {}
+
+  # These are optional – only used if env vars are missing
+  tenant_id       = var.arm_tenant_id
+  client_id       = var.arm_client_id
+  client_secret   = var.arm_client_secret
+  subscription_id = var.arm_subscription_id
 }
 
 # -------------------------------
 # Variables
 # -------------------------------
-variable "location" { default = "eastus" }
-variable "cluster_name" { default = "clearml-dev" }
-variable "kubernetes_version" { default = "1.30" }
-variable "worker_node_count" { default = 2 }
-variable "ssh_public_key" { default = "~/.ssh/id_rsa.pub" }
+variable "location"            { default = "eastus" }
+variable "cluster_name"        { default = "clearml-dev" }
+variable "kubernetes_version"  { default = "1.30" }
+variable "worker_node_count"   { default = 2 }
+variable "ssh_public_key"      { default = "~/.ssh/id_rsa.pub" }
 
 # -------------------------------
 # Resource Group
@@ -119,4 +154,8 @@ output "kubeconfig" {
 
 output "cluster_name" {
   value = azurerm_kubernetes_cluster.aks.name
+}
+
+output "resource_group" {
+  value = azurerm_resource_group.rg.name
 }
