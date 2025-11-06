@@ -31,7 +31,7 @@ For training and experimentation, this mirrors the structure used in enterprise 
 
 ### But I already have an AWS acount, now what?
 
-If you already have a production AWS account, do **not** repurpose it as your management account. Instead, create a new management account as explained below which will serve as your administrative hub, and then link your existing production account as a **member account**.
+If you already have a production AWS account, don’t convert it into your management account. It’s safer to create a new account dedicated to management duties and then add your existing production account as a member account under it. Setting this up properly takes time, so plan for at least two hours to complete the full configuration using the steps outlined below.
 
 Follow these steps:
 
