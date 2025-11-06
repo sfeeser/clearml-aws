@@ -1,4 +1,4 @@
-i# main.tf — FULLY SELF-CONTAINED AZURE AKS TERRAFORM
+# main.tf — FULLY SELF-CONTAINED AZURE AKS TERRAFORM
 
 terraform {
   required_version = ">= 1.5"
