@@ -10,13 +10,13 @@ These instructions guide you through creating a secure AWS Organization with:
 
 Before diving into the setup, it’s important to understand *why* AWS Organizations and structured account management are essential, especially when deploying solutions like ClearML or any infrastructure-as-code (IaC) system.
 
-When you first create an AWS account, it operates as a **standalone account**—with its own billing, identity, and access controls. This simple model works for individuals experimenting with AWS but quickly becomes problematic when scaling up. Mixing production workloads, test environments, and automation credentials inside one account leads to risks such as:
+When you first create an AWS account, it operates as a **standalone account** with its own billing, identity, and access controls. This simple model works for individuals experimenting with AWS but quickly becomes problematic when scaling up. Mixing production workloads, test environments, and automation credentials inside one account leads to risks such as:
 
 * Accidental deletion or modification of critical resources
 * Runaway billing or unmonitored cost growth
 * Difficulty isolating permissions and maintaining compliance
 
-AWS solves these challenges through **AWS Organizations**, which let you centrally manage multiple accounts—each with strong isolation yet unified under one administrative and billing umbrella.
+AWS solves these challenges through **AWS Organizations**, which let you centrally manage multiple accounts each with strong isolation yet unified under one administrative and billing umbrella.
 
 The first account you enable with AWS Organizations becomes your **management account**. Each additional account you create under it is a **member account**. Member accounts are independent AWS accounts governed through consolidated billing, central identity, and organization-wide policies.
 
@@ -35,7 +35,7 @@ If you already have a production AWS account, do **not** repurpose it as your ma
 
 Follow these steps:
 
-1. **Create a new AWS account** by following the detailedf steps below. Now you will have a new account that will serve as your **management account**.
+1. **Create a new AWS account** by following the detailed steps below. Now you will have a new account that will serve as your **management account**.
 2. Return back to here after you do all the steps spelled out in the "How to Set Up an AWS Organization and Sandbox Account for IaC"
 3. From the new management account, open **AWS Organizations** and choose **Create an organization → Enable all features.**
 4. Once created, go to **Accounts → Add an account → Invite an existing AWS account.**
