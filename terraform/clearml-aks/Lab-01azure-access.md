@@ -42,6 +42,11 @@ It teaches **“Azure talk”** first (the concepts, the names, the mental model
 2. **Add secret** → *Certificates & secrets → New client secret*  
 3. **Assign role** → *Subscriptions → Sandbox-IaC-01 → Access control (IAM) → Add role assignment → Contributor → Select `iac-sandbox-runner`*
 
+Below are **exact, copy-paste steps** (portal + CLI) to locate **each of the four values** you need for Terraform.  
+Do them **in order** — you’ll end up with a ready-to-use `export` block.
+
+---
+
 **Environment variables** (exact names Terraform expects):
 
 ```bash
@@ -52,6 +57,58 @@ export ARM_CLIENT_SECRET="*****"
 ```
 
 > **Teach:** *“Never use your personal login for Terraform. Always use a Service Principal with **least-privilege** role on the **sandbox subscription**.”*
+
+
+### 1. How to find `ARM_TENANT_ID` (Directory ID)
+
+  Portal
+  1. Go to **https://portal.azure.com** → **Microsoft Entra ID** (left menu or search)  
+  2. Overview blade → **Tenant ID** = `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` ← **copy**
+  
+  CLI (alternative)
+  ```bash
+  az account tenant list --query "[0].tenantId" -o tsv
+  ```
+
+### 2. How to find `ARM_SUBSCRIPTION_ID`
+
+  Portal
+  1. Top-right **directory + subscription** picker (globe icon)  
+  2. Click **Subscriptions**  
+  3. Find your **sandbox** (e.g., `Sandbox-IaC-01` or `clearml`) → **Subscription ID** column  
+     → `11111111-1111-1111-1111-111111111111` ← **copy**
+  
+  CLI
+  ```bash
+  az account list --query "[?name=='Sandbox-IaC-01'].id" -o tsv
+  # or list all:
+  az account list --output table
+  ```
+
+### 3. & 4. How to find Find `ARM_CLIENT_ID` + `ARM_CLIENT_SECRET` (Service Principal)
+
+  > **You must have already created the app registration** (e.g., `iac-sandbox-runner`).  
+  > If not, jump to the **quick-create** box at the end.
+  
+  Portal
+  1. **Microsoft Entra ID** → **App registrations**  
+  2. Find **iac-sandbox-runner** → click it  
+  3. **Overview** → **Application (client) ID** = `aaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` ← **copy**  
+  4. Left menu → **Certificates & secrets** → **Client secrets** tab  
+  5. Find your secret → **Value** column (not Description) → click the **copy icon** ← **paste immediately** (it disappears after you leave)
+  
+  CLI (if you have the name)
+  ```bash
+  # Client ID
+  az ad app list --display-name iac-sandbox-runner --query "[0].appId" -o tsv
+  
+  # Secret (create if missing)
+  az ad app credential reset \
+    --id $(az ad app list --display-name iac-sandbox-runner --query "[0].appId" -o tsv) \
+    --append --years 1 --query password -o tsv
+```
+
+
 
 ---
 
