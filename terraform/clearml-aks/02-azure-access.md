@@ -19,6 +19,12 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash`
 
+0. Check your version.
+
+    `student@bchd:~$` `az version`
+
+    > It should show something like **azure-cli 2.65.0** or newer. 
+
 0. Log in. 
 
     `student@bchd:~$` `az login`
