@@ -8,7 +8,7 @@ To actually talk to cloud services like AWS, Azure, or Google Cloud, it needs pl
 
 ### Lab Objective
 
-Initialize the backend where Terraform stores its state file *terraform.tfstate** which is simply a JSON map of your infrastructure.
+Initialize the backend where Terraform stores its state file which is simply a JSON map of your infrastructure.
 
 ### Procedure
 
@@ -47,3 +47,14 @@ Initialize the backend where Terraform stores its state file *terraform.tfstate*
     ```
 
 0. Terraform has been successfully initialized.
+
+0. Verify the files are created.
+
+    `student@bchd:~/clearml-aws/terraform/clearml-aks$` `ls -al`
+
+    ```
+    .terraform
+    .terraform.lock.hcl
+    main.tf
+    ```
+
