@@ -15,5 +15,22 @@ This guide provides the steps to install necessary tools and perform local synta
       export ARM_CLIENT_SECRET="*****"
     ```
 
-    `student@bchd:~$` `
+0. Install the azure cli to login.
+
+    `student@bchd:~$` `curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash`
+
+0. Log in. 
+
+    `student@bchd:~$` `az login`
+
+0. Take a look at your account
+
+    `student@bchd:~$` `az account show`
+
+0. check options for resources
+
+   `student@bchd:~$` `az account list --output table`
+
+   `student@bchd:~$` `az vm list-skus --location eastus --all   --output table`
+
 
