@@ -6,7 +6,10 @@
 
 ### Procedure
 
-1. Set your environment variables (azure keys in bitwarden)
+1. install terraform
+
+
+0. Set your environment variables (azure keys in bitwarden)
 
 0. clone the repo
 
@@ -53,6 +56,10 @@
 
     `student@bchd:~$` `chmod +x kubectl`
 
+0. move kubectl to default path for continued use.
+
+    `student@bchd:~$` `sudo mv kubectl /usr/local/bin/`
+
 0. Setup a kube config destination folder
 
     `student@bchd:~$` `mkdir -p ~/.kube`
@@ -69,27 +76,43 @@
 
     `student@bchd:~$` `kubectl --kubeconfig ~/.kube/clearml-dev.config get nodes -o wide`
 
-0. move kubectl to default path for continued use.
+0. Check the version of your kuberenetes client
 
-    `student@bchd:~$` `sudo mv kubectl /usr/local/bin/`
+    `student@bchd:~$` `kubectl version --client
 
-kubectl version --client
-kubectl get nodes
-terraform output -raw kubeconfig > ~/.kube/clearml-dev.config
-mkdir -p ~/.kube
-terraform output -raw kubeconfig > ~/.kube/clearml-dev.config
-kubectl --kubeconfig ~/.kube/clearml-dev.config get nodes -o wide
-kubectl get nodes
-export KUBECONFIG=~/.kube/clearml-dev.config
-echo 'export KUBECONFIG=~/.kube/clearml-dev.config' >> ~/.bashrc
-kubectl get nodes
-kubectl get pods --all-namespaces
-# Install Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-# Add repo
-helm repo add clearml https://clearml.github.io/helm-charts
-helm repo update
-# Install (dev mode)
-helm install clearml-dev clearml/clearml   --namespace clearml --create-namespace   --set global.ingress.enabled=true   --set global.ingress.host=clearml-dev.$(terraform output -raw resource_group).nip.io
-history
-kubectl get svc -n clearml clearml-dev-clearml-webserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+0. set your variables
+
+    `student@bchd:~$` `export KUBECONFIG=~/.kube/clearml-dev.config`
+
+    `student@bchd:~$` `echo 'export KUBECONFIG=~/.kube/clearml-dev.config' >> ~/.bashrc`
+
+    > `source .bashrc`
+
+0. Now get your nodes
+
+    `student@bchd:~$` `kubectl get nodes`
+
+0. Check your pods
+
+    `student@bchd:~$` `kubectl get pods --all-namespaces`
+
+---
+
+0. Install Helm
+    `student@bchd:~$` `curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
+
+0. Add repo
+
+    `student@bchd:~$` `helm repo add clearml https://clearml.github.io/helm-charts`
+
+    `student@bchd:~$` `helm repo update`
+
+---
+
+0.  Install clearml (dev mode)
+
+    `student@bchd:~$` `helm install clearml-dev clearml/clearml   --namespace clearml --create-namespace   --set global.ingress.enabled=true   --set global.ingress.host=clearml-dev.$(terraform output -raw resource_group).nip.io`
+
+0. Check on the running service
+
+    `student@bchd:~$` `kubectl get svc -n clearml clearml-dev-clearml-webserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
