@@ -6,7 +6,7 @@ This guide provides the steps to install necessary tools and perform local synta
 
 ### Procedure
 
-1. Set your environmental variables (azure keys)
+1. Set your environmental variables (azure keys). These are created previously so make sure you set them correctly.
 
     ```shell
       export ARM_TENANT_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -28,6 +28,9 @@ This guide provides the steps to install necessary tools and perform local synta
     ```
 
 0. Follow the steps given to login via the web browser. You may have to use an authenticator app in addition to providing passkey / password. Once in, you can close the browser tab as it will tell you to do so. 
+
+    <img width="476" height="363" alt="image" src="https://github.com/user-attachments/assets/52012af5-1781-4bde-95f4-cfdc3526b82d" />
+
 
 0. Back on your terminal, you should see a new set of messages that look similar to the below:
 
@@ -53,7 +56,7 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `az account show`
 
-    ```
+    ```json
     {
       "environmentName": "AzureCloud",
       "homeTenantId": "crsk35x1-dall-45ha-9c22-pt1a6klm40ot",
