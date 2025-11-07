@@ -12,6 +12,8 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `sudo apt install -y curl unzip apt-transport-https software-properties-common`
 
+    > If a screen pops up _Daemons using outdated libraries_ you can press the enter key to continue and restart services.
+
 0. We will use the official HashiCorp repository for the most stable and up-to-date installation method. Add the HashiCorp GPG key:
 
     `student@bchd:~$` `curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg`
@@ -26,7 +28,13 @@ This guide provides the steps to install necessary tools and perform local synta
 
     `student@bchd:~$` `sudo apt install terraform`
 
+    > Again, if prompted with a new pop-up screen, just press enter to continue and restart services as highlighted.
+
 0. Verify installation:
 
     `student@bchd:~$` `terraform --version`
 
+    ```
+    Terraform v1.13.5
+    on linux_amd64
+    ```
