@@ -25,5 +25,12 @@ Execute the approved `terraform apply` and provision your live Azure infrastruct
 
     `student@bchd:~/clearml-aws/terraform/clearml-aks$` `terraform apply`
 
+    > **If you want to start being charged** and create all the resources, when prompted type "yes" and then hit Enter.
 
-**NOTE**: You may have to install kubernetes locally in order to run commands against your cluster up in your Azure cloud space.
+0. This also will create the state file, *terraform.tfstate* which is a JSON file you can take a look at if you wish.
+
+    `student@bchd:~/clearml-aws/terraform/clearml-aks$` `view terraform.tfstate`
+
+    > After using your arrow keys to scroll through, `:q` to quit
+
+**NOTE**: Next, you may have to install specific software locally  in order to run commands against your cluster up in your Azure cloud space.
